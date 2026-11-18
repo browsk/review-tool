@@ -7,8 +7,16 @@ export type FilePicker = () => Promise<PickResult>;
 const WINDOWS_SCRIPT = [
   '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8',
   'Add-Type -AssemblyName System.Windows.Forms',
+  'Add-Type -AssemblyName System.Drawing',
   '$owner = New-Object System.Windows.Forms.Form',
   '$owner.TopMost = $true',
+  '$owner.ShowInTaskbar = $false',
+  '$owner.FormBorderStyle = "None"',
+  '$owner.Opacity = 0',
+  '$owner.Size = New-Object System.Drawing.Size(1, 1)',
+  '$owner.StartPosition = "CenterScreen"',
+  '$owner.Show()',
+  '$owner.Activate()',
   '$d = New-Object System.Windows.Forms.OpenFileDialog',
   "$d.Title = 'Open a markdown document'",
   "$d.Filter = 'Markdown (*.md;*.markdown)|*.md;*.markdown|All files (*.*)|*.*'",
@@ -42,3 +50,4 @@ export const pickFileNative: FilePicker = () =>
     child.on('error', () => done({ error: 'A file dialog is not available on this system. Type the path instead.' }));
     child.on('close', () => done({ path: out.trim() || null }));
   });
+
