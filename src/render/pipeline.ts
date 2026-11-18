@@ -12,15 +12,19 @@ import type { Root, Content, Heading, Code, Image } from 'mdast';
 import type { Diagnostic } from './diagnostics.js';
 import { schema } from './sanitize.js';
 import { highlightPlugin } from './highlight.js';
+import { sectionsPlugin, type Section } from './sections.js';
 
 export interface RenderOptions {
   /** returns true if a relative asset exists (resolved against the document directory) */
   assetExists?: (relPath: string) => boolean;
   /** URL prefix the asset route is mounted on */
   assetPrefix?: string;
+  /** heading depth that opens a feedback section (default 2) */
+  sectionLevel?: number;
 }
 
 export interface RenderResult {
+  sections: Section[];
   html: string;
   diagnostics: Diagnostic[];
   frontmatter?: string;
@@ -194,6 +198,7 @@ export function looksBinary(buf: Buffer): boolean {
 
 export async function renderMarkdown(source: string, opts: RenderOptions = {}): Promise<RenderResult> {
   const diagnostics: Diagnostic[] = [];
+  const sections: Section[] = [];
   let frontmatter: string | undefined;
   try {
     const processor = unified()
@@ -206,17 +211,18 @@ export async function renderMarkdown(source: string, opts: RenderOptions = {}): 
       .use(analysePlugin(source, diagnostics, opts))
       .use(remarkRehype, { allowDangerousHtml: true })
       .use(rehypeRaw)
+      .use(sectionsPlugin(opts.sectionLevel ?? 2, sections))
       .use(highlightPlugin(diagnostics))
       .use(rehypeSanitize, schema)
       .use(rehypeStringify);
     const file = await processor.process(source);
-    return { html: String(file), diagnostics, frontmatter, failed: false };
+    return { html: String(file), diagnostics, frontmatter, sections, failed: false };
   } catch (err) {
     diagnostics.push({
       severity: 'error',
       code: 'parse-failed',
       message: `Rendering failed; showing raw text (${(err as Error).message})`,
     });
-    return { html: `<pre class="fallback">${escapeHtml(source)}</pre>`, diagnostics, failed: true };
+    return { html: `<pre class="fallback">${escapeHtml(source)}</pre>`, diagnostics, sections: [], failed: true };
   }
 }

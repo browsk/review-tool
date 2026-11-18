@@ -3,8 +3,9 @@ import type { Child } from 'hono/jsx';
 import { indicatorFor, type Diagnostic } from '../render/diagnostics.js';
 import type { CurrentDoc } from './app.js';
 
-export function Page(props: { token: string; doc: CurrentDoc | null; children?: Child }) {
+export function Page(props: { token: string; doc: CurrentDoc | null; navMaxLevel: number; sectionLevel: number; children?: Child }) {
   const diags = props.doc?.diagnostics ?? [];
+  const hasDoc = !!props.doc?.html;
   const ind = props.doc ? indicatorFor(diags) : 'none';
   return (
     <html lang="en">
@@ -20,7 +21,33 @@ export function Page(props: { token: string; doc: CurrentDoc | null; children?: 
       <body>
         <header class="app-header">
           <span class="doc-title">{props.doc?.name ?? 'Document Review'}</span>
+          {hasDoc ? (
+            <nav id="breadcrumb" class="breadcrumb" aria-label="Current section" aria-live="polite"></nav>
+          ) : null}
           <span class="spacer"></span>
+          {hasDoc ? (
+            <>
+              <span class="group" role="group" aria-label="Section navigation">
+                <button type="button" id="prev-section" title="Previous section (Ctrl/Alt+Up)" aria-label="Previous section">
+                  &#9650;
+                </button>
+                <button type="button" id="next-section" title="Next section (Ctrl/Alt+Down)" aria-label="Next section">
+                  &#9660;
+                </button>
+              </span>
+              <span class="group" role="group" aria-label="Zoom">
+                <button type="button" id="zoom-out" aria-label="Zoom out" title="Zoom out">
+                  A-
+                </button>
+                <output id="zoom-label" aria-live="off">
+                  100%
+                </output>
+                <button type="button" id="zoom-in" aria-label="Zoom in" title="Zoom in">
+                  A+
+                </button>
+              </span>
+            </>
+          ) : null}
           <button
             type="button"
             id="diag-indicator"
@@ -84,7 +111,7 @@ export function StartForm(props: { token: string; recent: string[]; error?: stri
   );
 }
 
-export function DocumentView(props: { doc: CurrentDoc }) {
+export function DocumentView(props: { doc: CurrentDoc; navMaxLevel: number; sectionLevel: number }) {
   const { doc } = props;
   return (
     <>
@@ -95,7 +122,13 @@ export function DocumentView(props: { doc: CurrentDoc }) {
         </details>
       ) : null}
       {doc.html ? (
-        <article id="doc" class="doc" data-sha256={doc.sha256}>
+        <article
+          id="doc"
+          class="doc"
+          data-sha256={doc.sha256}
+          data-section-level={String(props.sectionLevel)}
+          data-nav-max-level={String(props.navMaxLevel)}
+        >
           {raw(doc.html)}
         </article>
       ) : (

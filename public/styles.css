@@ -58,7 +58,7 @@ button.link { border: 0; background: none; color: var(--link); padding: 0; text-
 .diag-count { font-size: 0.75rem; color: var(--muted); }
 
 .panel {
-  position: fixed; top: 2.8rem; right: 0; bottom: 0; width: min(28rem, 90vw);
+  position: fixed; top: var(--header-h, 2.8rem); right: 0; bottom: 0; width: min(28rem, 90vw);
   overflow: auto; padding: 1rem; background: var(--panel);
   border-left: 1px solid var(--border); z-index: 20;
 }
@@ -101,4 +101,15 @@ main { padding: 1rem; }
 :root[data-theme='dark'] .shiki, :root[data-theme='dark'] .shiki span { color: var(--shiki-dark); }
 :root[data-theme='dark'] .shiki { background-color: var(--shiki-dark-bg); }
 
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.doc :is(h1, h2, h3, h4, h5, h6) { scroll-margin-top: var(--header-h, 3rem); }
+.group { display: inline-flex; align-items: center; gap: 0.3rem; }
+.group output { min-width: 3rem; text-align: center; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 0.85rem; }
+.app-header button:disabled { opacity: 0.4; cursor: default; }
+.breadcrumb { display: flex; align-items: center; gap: 0.4rem; min-width: 0; flex: 0 1 auto; overflow: hidden; white-space: nowrap; color: var(--muted); font-size: 0.9rem; }
+.breadcrumb .crumb { overflow: hidden; text-overflow: ellipsis; }
+.breadcrumb .crumb[aria-current] { color: var(--fg); font-weight: 600; }
+.app-header:has(.breadcrumb) .doc-title { flex: none; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }

@@ -5,6 +5,7 @@ import { Hono } from 'hono';
 import type { Context, Next } from 'hono';
 import type { Config } from './config.js';
 import { renderMarkdown } from '../render/pipeline.js';
+import type { Section } from '../render/sections.js';
 import { indicatorFor, type Diagnostic } from '../render/diagnostics.js';
 import { IMAGE_MIME, LoadError, PathError, ReadFailure, assetExists, loadLocalDocument, resolveSafe } from '../sources/local.js';
 import { addRecent, readRecent } from '../sources/recent.js';
@@ -17,6 +18,7 @@ export interface CurrentDoc {
   html: string;
   frontmatter?: string;
   diagnostics: Diagnostic[];
+  sections: Section[];
 }
 
 export interface AppState {
@@ -83,9 +85,9 @@ export function createApp(config: Config) {
 
   const page = (c: Context, opts: { error?: string; status?: 200 | 400 } = {}) =>
     c.html(
-      <Page token={state.token} doc={state.doc}>
+      <Page token={state.token} doc={state.doc} navMaxLevel={config.navMaxLevel} sectionLevel={config.sectionLevel}>
         <StartForm token={state.token} recent={readRecent(config.dataDir)} error={opts.error} />
-        {state.doc ? <DocumentView doc={state.doc} /> : <p class="empty">No document loaded.</p>}
+        {state.doc ? <DocumentView doc={state.doc} navMaxLevel={config.navMaxLevel} sectionLevel={config.sectionLevel} /> : <p class="empty">No document loaded.</p>}
       </Page>,
       opts.status ?? 200,
     );
@@ -97,7 +99,10 @@ export function createApp(config: Config) {
     const input = typeof form.path === 'string' ? form.path : '';
     try {
       const doc = loadLocalDocument(input);
-      const r = await renderMarkdown(doc.source, { assetExists: (rel) => assetExists(doc.dir, rel) });
+      const r = await renderMarkdown(doc.source, {
+        assetExists: (rel) => assetExists(doc.dir, rel),
+        sectionLevel: config.sectionLevel,
+      });
       state.doc = {
         name: doc.name,
         dir: doc.dir,
@@ -105,6 +110,7 @@ export function createApp(config: Config) {
         html: r.html,
         frontmatter: r.frontmatter,
         diagnostics: r.diagnostics,
+        sections: r.sections,
       };
       addRecent(config.dataDir, doc.path);
       return page(c);
@@ -116,6 +122,7 @@ export function createApp(config: Config) {
           sha256: '',
           html: '',
           diagnostics: [{ severity: 'error', code: 'read-failure', message: err.message }],
+          sections: [],
         };
         return page(c);
       }

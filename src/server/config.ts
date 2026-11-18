@@ -6,6 +6,8 @@ export interface Config {
   port: number;
   dataDir: string;
   sectionLevel: number;
+  /** deepest heading level that Ctrl/Alt+Up/Down navigation stops at (1-6) */
+  navMaxLevel: number;
   lan: boolean;
 }
 
@@ -18,6 +20,11 @@ export function defaultDataDir(): string {
   return path.join(process.env.XDG_DATA_HOME ?? path.join(os.homedir(), '.local', 'share'), 'review-tool');
 }
 
+function clampLevel(v: string | undefined, dflt: number): number {
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 1 && n <= 6 ? n : dflt;
+}
+
 export function loadConfig(argv: string[] = process.argv.slice(2), env = process.env): Config {
   const lan = argv.includes('--host-lan');
   const portArg = argv.find((a) => a.startsWith('--port='))?.slice(7);
@@ -26,7 +33,8 @@ export function loadConfig(argv: string[] = process.argv.slice(2), env = process
     host: lan ? '0.0.0.0' : '127.0.0.1',
     port: Number.isInteger(port) && port >= 0 && port < 65536 ? port : 3000,
     dataDir: defaultDataDir(),
-    sectionLevel: Number(env.SECTION_LEVEL ?? 2) || 2,
+    sectionLevel: clampLevel(env.SECTION_LEVEL, 2),
+    navMaxLevel: clampLevel(env.NAV_MAX_LEVEL, 6),
     lan,
   };
 }
