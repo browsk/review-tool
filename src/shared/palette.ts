@@ -14,25 +14,24 @@ export interface ThemePalette {
 }
 
 export const LIGHT: ThemePalette = {
-  bg: '#ffffff',
-  fg: '#1a1a1a',
+  bg: '#f1f4f2',
+  fg: '#15222b',
   layers: {
-    reject: { tint: [211, 47, 47], alpha: 0.16, line: '#c62828' },
-    cond: { tint: [245, 124, 0], alpha: 0.18, line: '#b26a00' },
-    accept: { tint: [46, 125, 50], alpha: 0.16, line: '#2e7d32' },
+    reject: { tint: [179, 32, 58], alpha: 0.14, line: '#b3203a' },
+    cond: { tint: [240, 180, 0], alpha: 0.28, line: '#8a5f00' },
+    accept: { tint: [11, 107, 87], alpha: 0.14, line: '#0b6b57' },
   },
 };
 
 export const DARK: ThemePalette = {
-  bg: '#14161a',
-  fg: '#e6e8eb',
+  bg: '#0f1b26',
+  fg: '#dde7ec',
   layers: {
-    reject: { tint: [198, 40, 40], alpha: 0.22, line: '#ef5350' },
-    cond: { tint: [178, 106, 0], alpha: 0.22, line: '#ffb74d' },
-    accept: { tint: [46, 125, 50], alpha: 0.22, line: '#66bb6a' },
+    reject: { tint: [200, 50, 75], alpha: 0.24, line: '#ff7a8a' },
+    cond: { tint: [178, 106, 0], alpha: 0.22, line: '#f2c14e' },
+    accept: { tint: [20, 140, 110], alpha: 0.24, line: '#5fd1b0' },
   },
 };
-
 export const hex = (h: string): [number, number, number] => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)) as [number, number, number];
 
 /** Composite `n` translucent layers of one tint over `bg`. */

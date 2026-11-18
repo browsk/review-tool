@@ -1,0 +1,1 @@
+Atkinson Hyperlegible Next and Atkinson Hyperlegible Mono (Braille Institute) and Zilla Slab (Mozilla) are licensed under the SIL Open Font License 1.1, https://openfontlicense.org. Files come from the @fontsource packages.

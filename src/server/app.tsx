@@ -244,7 +244,7 @@ export function createApp(config: Config, deps: { pickFile?: FilePicker } = {}) 
     try {
       const real = resolveSafe(PUBLIC_DIR, rel);
       const ext = path.extname(real).toLowerCase();
-      const type = ext === '.js' ? 'text/javascript; charset=utf-8' : ext === '.css' ? 'text/css; charset=utf-8' : 'application/octet-stream';
+      const type = ext === '.js' ? 'text/javascript; charset=utf-8' : ext === '.css' ? 'text/css; charset=utf-8' : ext === '.woff2' ? 'font/woff2' : 'application/octet-stream';
       return new Response(new Uint8Array(fs.readFileSync(real)), { headers: { 'Content-Type': type } });
     } catch {
       return c.text('Not found', 404);

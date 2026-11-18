@@ -67,9 +67,9 @@ for (const scheme of ['light', 'dark'] as const) {
     await load(page, 'arc42-good.md');
     await expect(page.locator('#doc')).toBeVisible();
     const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-    await expect.poll(bg).toBe(scheme === 'dark' ? 'rgb(20, 22, 26)' : 'rgb(255, 255, 255)');
+    await expect.poll(bg).toBe(scheme === 'dark' ? 'rgb(15, 27, 38)' : 'rgb(241, 244, 242)');
     await page.click('#theme-toggle');
-    const flipped = scheme === 'dark' ? 'rgb(255, 255, 255)' : 'rgb(20, 22, 26)';
+    const flipped = scheme === 'dark' ? 'rgb(241, 244, 242)' : 'rgb(15, 27, 38)';
     await expect.poll(bg).toBe(flipped);
     await page.reload();
     await expect(page.locator('#doc')).toBeVisible();

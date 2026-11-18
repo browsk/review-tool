@@ -296,7 +296,7 @@ test.describe('range feedback', () => {
       const single = await pixel(await target('Paragraph 5 of section 3.1.'));
       const double = await pixel(await target('3.1. Lorem ipsum', 4));
       const sum = (c: number[]) => c[0]! + c[1]! + c[2]!;
-      const bg = scheme === 'dark' ? [20, 22, 26] : [255, 255, 255];
+      const bg = scheme === 'dark' ? [15, 27, 38] : [241, 244, 242];
       expect(plain).toEqual(bg);
       // tint is applied...
       expect(single).not.toEqual(plain);

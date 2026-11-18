@@ -185,7 +185,7 @@ The reviewers' browser does not matter for the facilitator's screen share: only 
 - Listens on `127.0.0.1` only unless `--host-lan` is given. Requests with an unexpected `Host` header are
   refused (DNS-rebinding defence); changing requests also need a per-process token and a same-origin request.
 - A strict Content Security Policy (no inline scripts, no external origins) is sent with every page; the app makes
-  no network calls except to Azure DevOps. Fonts, scripts and styles are bundled.
+  no network calls except to Azure DevOps. Fonts, scripts and styles are bundled (Atkinson Hyperlegible Next and Mono, Zilla Slab; SIL OFL, see public/fonts/LICENSES.txt).
 - All rendered Markdown is sanitised after rendering; user-entered text is escaped. Relative images are served only
   from the document's directory (traversal, absolute, UNC, drive-letter, encoded and symlink escapes return 403)
   and only as images; SVG images are served in a sandbox.
