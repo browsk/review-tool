@@ -194,7 +194,9 @@ export function StartForm(props: {
           Markdown file path
           <input type="text" name="path" id="path-input" size={60} autocomplete="off" />
         </label>
+        <button type="button" id="browse-file">Browse…</button>
         <button type="submit">Load</button>
+        <span id="browse-msg" class="hint" role="status"></span>
       </form>
       <form method="post" action="/load/ado" id="ado-form" class="ado-form">
         <input type="hidden" name="_token" value={props.token} />

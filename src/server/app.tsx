@@ -10,6 +10,7 @@ import type { Section } from '../render/sections.js';
 import { indicatorFor, type Diagnostic } from '../render/diagnostics.js';
 import { IMAGE_MIME, LoadError, PathError, ReadFailure, assetExists, loadLocalDocument, resolveSafe } from '../sources/local.js';
 import { addRecent, readRecent } from '../sources/recent.js';
+import { pickFileNative, type FilePicker } from '../sources/picker.js';
 import { openDb } from '../db/db.js';
 import { createRepos } from '../db/repos.js';
 import { registerApi } from './api.js';
@@ -51,7 +52,8 @@ export const CSP = [
 
 const PUBLIC_DIR = path.resolve(process.cwd(), 'public');
 
-export function createApp(config: Config) {
+export function createApp(config: Config, deps: { pickFile?: FilePicker } = {}) {
+  const pickFile = deps.pickFile ?? pickFileNative;
   const state: AppState = { doc: null, token: randomBytes(24).toString('hex') };
   const app = new Hono();
   const repos = createRepos(openDb(config.dataDir));
@@ -148,6 +150,19 @@ export function createApp(config: Config) {
   };
 
   app.get('/', (c) => page(c));
+
+  let picking = false;
+  /** Open the OS file dialog on this machine and return the chosen path (token-protected like every POST). */
+  app.post('/api/pick-file', async (c) => {
+    if (picking) return c.json({ error: 'A file dialog is already open.' }, 409);
+    picking = true;
+    try {
+      const r = await pickFile();
+      return c.json(r, 'error' in r ? 501 : 200);
+    } finally {
+      picking = false;
+    }
+  });
 
   app.post('/load/local', async (c) => {
     const form = await c.req.parseBody();

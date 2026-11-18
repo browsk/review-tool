@@ -9,6 +9,24 @@ import { initPanels } from './panels.js';
 
 import { initDiagrams } from './diagrams.js';
 
+import { api } from './api.js';
+
+document.getElementById('browse-file')?.addEventListener('click', async (e) => {
+  const btn = e.currentTarget as HTMLButtonElement;
+  const msg = document.getElementById('browse-msg')!;
+  btn.disabled = true;
+  msg.textContent = 'Choose a file in the dialog…';
+  const r = await api('POST', '/api/pick-file');
+  btn.disabled = false;
+  if (r.ok && r.data.path) {
+    const input = document.getElementById('path-input') as HTMLInputElement;
+    input.value = r.data.path;
+    input.form?.requestSubmit();
+  } else {
+    msg.textContent = r.ok ? '' : r.data.error ?? 'The file dialog could not be opened. Type the path instead.';
+  }
+});
+
 initTheme();
 initDiagnostics();
 initZoom();
