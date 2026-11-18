@@ -44,6 +44,9 @@ export interface DiagramInfo {
   el: Element;
   start: number;
   end: number;
+  /** the diagram's source text (feedback on a diagram stores this as its quote) */
+  source: string;
+  lang: string;
 }
 
 export interface TextModel {
@@ -140,7 +143,7 @@ export function buildTextModel(root: Element): TextModel {
     if (el.hasAttribute('data-diagram-lang')) {
       pendingBreak = true;
       flush();
-      diagrams.push({ el, start: out.length, end: out.length + 1 });
+      diagrams.push({ el, start: out.length, end: out.length + 1, source: el.getAttribute('data-diagram-source') ?? '', lang: el.getAttribute('data-diagram-lang') ?? '' });
       out += DIAGRAM_PLACEHOLDER;
       pendingBreak = true;
       return;

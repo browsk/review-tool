@@ -89,7 +89,7 @@ test.describe('whole-document feedback', () => {
     await expect(chip).toHaveAttribute('data-accept', '1');
     await expect(page.locator('#all-count')).toHaveText('3');
     expect(Object.keys(await highlightInfo(page))).toEqual([]); // not text: no highlights or markers
-    await expect(page.locator('.marker')).toHaveCount(0);
+    await expect(page.locator('.fb-marker')).toHaveCount(0);
 
     await reload(page);
     await page.click('#btn-doc-feedback');

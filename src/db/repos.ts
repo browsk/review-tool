@@ -48,6 +48,7 @@ export interface ImportRowLike {
   start: number | null;
   end: number | null;
   quote: string | null;
+  kind: 'text' | 'diagram';
   prefix: string;
   suffix: string;
   docSha: string;
@@ -196,7 +197,7 @@ export function createRepos(db: DB) {
           insert.run(
             r.id, sessionId, r.scope, r.status, r.comment, reviewerId, r.createdAt, Date.parse(r.createdAt), r.updatedAt,
             range ? r.start : null, range ? r.end : null, range ? r.quote : null, range ? r.prefix : null, range ? r.suffix : null,
-            range ? r.sectionHeading : null, range ? 'text' : null, range ? r.docSha || null : null, range ? TEXTMODEL_VERSION : null,
+            range ? r.sectionHeading : null, range ? r.kind : null, range ? r.docSha || null : null, range ? TEXTMODEL_VERSION : null,
           );
           mine.add(r.id);
           imported.push(r.id);

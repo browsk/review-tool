@@ -1,5 +1,6 @@
 import os from 'node:os';
 import path from 'node:path';
+import { DEFAULT_DIAGRAM_SETTINGS, type DiagramSettings } from '../diagrams/types.js';
 
 export interface Config {
   host: string;
@@ -13,6 +14,8 @@ export interface Config {
   adoPat?: string;
   /** TEST HOOK: send Azure DevOps API requests to this origin instead of dev.azure.com */
   adoApiBase?: string;
+  /** D2 theme ids, layout engine and per-diagram render timeout */
+  diagrams: DiagramSettings;
 }
 
 export function defaultDataDir(): string {
@@ -29,6 +32,11 @@ function clampLevel(v: string | undefined, dflt: number): number {
   return Number.isInteger(n) && n >= 1 && n <= 6 ? n : dflt;
 }
 
+function intEnv(v: string | undefined, dflt: number, min = 0): number {
+  const n = Number(v);
+  return v !== undefined && v !== '' && Number.isInteger(n) && n >= min ? n : dflt;
+}
+
 export function loadConfig(argv: string[] = process.argv.slice(2), env = process.env): Config {
   const lan = argv.includes('--host-lan');
   const portArg = argv.find((a) => a.startsWith('--port='))?.slice(7);
@@ -42,5 +50,12 @@ export function loadConfig(argv: string[] = process.argv.slice(2), env = process
     lan,
     adoPat: env.ADO_PAT || undefined,
     adoApiBase: env.REVIEW_TOOL_ADO_API_BASE || undefined,
+    diagrams: {
+      d2ThemeLight: intEnv(env.D2_THEME_LIGHT, DEFAULT_DIAGRAM_SETTINGS.d2ThemeLight),
+      d2ThemeDark: intEnv(env.D2_THEME_DARK, DEFAULT_DIAGRAM_SETTINGS.d2ThemeDark),
+      d2Layout: env.D2_LAYOUT === 'elk' ? 'elk' : 'dagre',
+      timeoutMs: intEnv(env.DIAGRAM_TIMEOUT_MS, DEFAULT_DIAGRAM_SETTINGS.timeoutMs, 100),
+      maxSourceBytes: DEFAULT_DIAGRAM_SETTINGS.maxSourceBytes,
+    },
   };
 }

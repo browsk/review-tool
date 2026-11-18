@@ -253,3 +253,22 @@ describe('CSV import validation', () => {
     expect(r.rows[0]!.id).toBe(uuid(1));
   });
 });
+
+import { inferKind } from '../../src/feedback/csv.js';
+
+describe('diagram anchors in CSV', () => {
+  it('infers a diagram anchor: it covers one character but its quote is the (longer) diagram source', () => {
+    expect(inferKind(40, 41, 'graph TD\n  A --> B')).toBe('diagram');
+    expect(inferKind(40, 41, 'a -> b')).toBe('diagram');
+    expect(inferKind(10, 25, 'ordinary quoted text')).toBe('text');
+    expect(inferKind(10, 11, 'x')).toBe('text'); // a one-character text selection
+    expect(inferKind(null, null, null)).toBe('text');
+  });
+
+  it('puts the inferred kind on imported rows', () => {
+    const H = 'id,scope,status,reviewer,created_at,comment,start_offset,end_offset,quote_exact';
+    const r = parseImport(`${H}\r\n${uuid(1)},range,Accept,Ada,2026-11-18,,40,41,"graph TD\n  A --> B"\r\n${uuid(2)},range,Accept,Ada,2026-11-18,,5,10,hello\r\n${uuid(3)},document,Accept,Ada,2026-11-18,,,,\r\n`, 'x');
+    expect(r.errors).toEqual([]);
+    expect(r.rows.map((x) => x.kind)).toEqual(['diagram', 'text', 'text']);
+  });
+});

@@ -1,6 +1,6 @@
 import { buildTextModel, offsetOf, rangeFor, type TextModel } from '../src/shared/textmodel.js';
 import { sectionsOf, validateSelection, type SectionInfo } from '../src/shared/sectionrules.js';
-import { reanchor } from '../src/shared/anchor.js';
+import { reanchor, reanchorDiagram } from '../src/shared/anchor.js';
 import { SEVERITY, type Status } from '../src/feedback/model.js';
 import { api } from './api.js';
 import { assignLayers } from '../src/shared/layers.js';
@@ -60,7 +60,8 @@ export async function resolveAnchors(): Promise<void> {
   const diags: ClientDiag[] = [];
   for (const f of store.rangeItems()) {
     const a = f.anchor!;
-    const r = reanchor(model.text, a);
+    // feedback on a whole diagram is found by its source text; everything else by its quoted text
+    const r = a.kind === 'diagram' ? reanchorDiagram(model.diagrams, a) : reanchor(model.text, a);
     if (!r) continue;
     store.resolved.set(f.id, { start: r.start, end: r.end });
     if (r.start !== a.start || r.end !== a.end) {
@@ -83,7 +84,7 @@ export async function resolveAnchors(): Promise<void> {
   if (!highlightsSupported()) {
     diags.push({ severity: 'warning', message: 'This browser does not support the CSS Custom Highlight API; text highlights are unavailable (margin markers still work).' });
   }
-  setClientDiagnostics(diags);
+  setClientDiagnostics('feedback', diags);
   if (updates.length || store.needsReanchor) {
     await api('POST', '/api/session/reanchor', { sha256: store.sha256, updates });
     store.needsReanchor = false;
@@ -118,7 +119,8 @@ export function draw(): void {
       // Each Highlight object paints once, so overlapping ranges go into different layers: their
       // translucent tints then stack (overlap deepens). Priority = severity so the most severe status
       // wins the underline where ranges overlap.
-      const located = store.rangeItems().filter((f) => store.resolved.has(f.id));
+      // (diagram feedback has no text to tint: it gets an outline on the diagram, see markDiagrams)
+      const located = store.rangeItems().filter((f) => store.resolved.has(f.id) && f.anchor?.kind !== 'diagram');
       const layers = assignLayers(located.map((f) => ({ id: f.id, ...(store.resolved.get(f.id) as Resolved) })));
       const groups = new Map<string, FeedbackItem[]>();
       for (const f of located) {
@@ -135,7 +137,33 @@ export function draw(): void {
       }
     }
   }
+  markDiagrams();
   buildMarkers();
+}
+
+/** Status-coloured outline (and a count) on each diagram that has feedback. */
+function markDiagrams(): void {
+  for (const d of model.diagrams) {
+    const items = visible ? diagramItems(d.el) : [];
+    if (!items.length) {
+      delete (d.el as HTMLElement).dataset.fb;
+      delete (d.el as HTMLElement).dataset.fbCount;
+      continue;
+    }
+    const worst = items.reduce((m, f) => (SEVERITY[f.status] > SEVERITY[m] ? f.status : m), items[0]!.status);
+    (d.el as HTMLElement).dataset.fb = STATUS_KEY[worst];
+    (d.el as HTMLElement).dataset.fbCount = String(items.length);
+  }
+}
+
+/** Feedback items anchored to this diagram block. */
+export function diagramItems(el: Element): FeedbackItem[] {
+  const d = model.diagrams.find((x) => x.el === el);
+  if (!d) return [];
+  return store
+    .rangeItems()
+    .filter((f) => f.anchor?.kind === 'diagram' && store.resolved.get(f.id)?.start === d.start)
+    .sort((a, b) => SEVERITY[b.status] - SEVERITY[a.status] || a.createdEpoch - b.createdEpoch);
 }
 
 function buildMarkers(): void {
@@ -147,13 +175,15 @@ function buildMarkers(): void {
   const items = store.rangeItems().filter((f) => store.resolved.has(f.id));
   if (!items.length) return;
   const spans = items.map((f) => ({ f, ...(store.resolved.get(f.id) as { start: number; end: number }) })).sort((a, b) => a.start - b.start);
-  for (const block of model.blocks) {
+  // text blocks plus diagram blocks (a diagram's placeholder character is its extent in the text model)
+  const blocks = [...model.blocks, ...model.diagrams.map((d) => ({ el: d.el, start: d.start, end: d.end }))];
+  for (const block of blocks) {
     const hit = spans.filter((s) => s.start < block.end && s.end > block.start);
     if (!hit.length) continue;
     const worst = hit.reduce((m, s) => (SEVERITY[s.f.status] > SEVERITY[m] ? s.f.status : m), hit[0]!.f.status);
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = `marker mk-${STATUS_KEY[worst]}`;
+    btn.className = `fb-marker mk-${STATUS_KEY[worst]}`;
     btn.dataset.noAnchor = '';
     btn.setAttribute('aria-label', `${hit.length} feedback item${hit.length === 1 ? '' : 's'} in this block, most severe: ${worst}`);
     btn.title = `${hit.length} feedback item${hit.length === 1 ? '' : 's'}`;
@@ -299,6 +329,11 @@ export function initHighlightInteraction(): void {
     const items = itemsAtPoint(e.clientX, e.clientY);
     if (!items.length) return;
     document.dispatchEvent(new CustomEvent('rt:show-items', { detail: { title: 'Feedback on this text', ids: items.map((i) => i.id) } }));
+  });
+
+  document.addEventListener('rt:diagram-click', (e) => {
+    const items = diagramItems((e as CustomEvent<Element>).detail);
+    if (items.length) document.dispatchEvent(new CustomEvent('rt:show-items', { detail: { title: 'Feedback on this diagram', ids: items.map((i) => i.id) } }));
   });
 
   new ResizeObserver(queueLayout).observe(docEl);

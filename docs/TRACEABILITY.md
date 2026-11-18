@@ -19,7 +19,12 @@ Updated at the end of each milestone. "U" = Vitest (`test/unit`), "E" = Playwrig
 | FR3 CommonMark/GFM/front matter/code highlighting | M1 | U pipeline |
 | FR3 raw HTML sanitised | M1 | U pipeline (xss fixture) |
 | FR3 resilience (node fallback, whole-parse fallback) | M1 | U pipeline ("never throws...") |
-| FR3a diagrams (Mermaid, D2), feedback on diagrams | M5b | pending (text model/selection snapping done in M3: U textmodel) |
+| FR3a fence detection; Mermaid (client, bundled, lazy) and D2 (server, WASM, pinned 0.1.33) render as SVG in both themes; plugin interface | M5b | U diagrams (registry, D2 service), pipeline-diagrams; E m5b "rendering" |
+| FR3a D2: cache keyed by sha256(source+theme+layout+version+theme ids); timeout kills the worker and recovers; SVG sanitised; TALA -> dagre + warning; source-size cap | M5b | U diagrams (real D2.js); E m5b TALA test |
+| FR3a failures: source shown + notice, orange indicator with the error line, document unaffected (Mermaid and D2) | M5b | U pipeline-diagrams; E m5b "failures degrade gracefully" |
+| FR3a zoom scaling, click-to-expand, Show source, no network requests | M5b | E m5b (zoom, expand, source toggle; every spec asserts no external requests) |
+| FR3a feedback on diagrams: hover button, whole-block anchor (quote = source), outline + marker + panel; selection snapping and one-section limit | M5b | E m5b "feedback on diagrams"; U textmodel (snapping) |
+| FR3a diagram feedback round-trips through CSV and re-anchors by source | M5b | U anchor (reanchorDiagram), csv (inferKind); E m5b round-trip test |
 | FR4 indicator green/orange/red + panel, jump to location | M1, M3 | E m1; U app; E m3 re-anchoring (client diagnostics) |
 | FR5 participants: file CSV/JSON, manual add | M3 | U participants; U api; E m3 "participants" |
 | FR5 invalid files list offending rows (missing column, empty, malformed JSON, duplicates) | M3 | U participants; E m3 "malformed participant file..." |

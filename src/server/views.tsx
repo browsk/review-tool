@@ -17,7 +17,7 @@ export function Page(props: { token: string; doc: CurrentDoc | null; navMaxLevel
         <title>{props.doc ? `${props.doc.name} - Review` : 'Document Review'}</title>
         <script src="/static/theme-init.js"></script>
         <link rel="stylesheet" href="/static/styles.css" />
-        <script src="/static/client.js" defer></script>
+        <script type="module" src="/static/client.js"></script>
       </head>
       <body>
         <header class="app-header">
@@ -281,6 +281,12 @@ export function DocumentView(props: { doc: CurrentDoc; navMaxLevel: number; sect
         >
           {raw(doc.html)}
         </article>
+        <dialog id="diagram-dialog" class="diagram-dialog" aria-label="Diagram">
+          <button type="button" id="diagram-close" class="icon" aria-label="Close">
+            &times;
+          </button>
+          <div id="diagram-dialog-body"></div>
+        </dialog>
         </div>
       ) : (
         <p class="empty">The document could not be read. See diagnostics.</p>

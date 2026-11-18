@@ -41,6 +41,7 @@ export const CSP = [
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
+  "font-src 'self' data:",
   "connect-src 'self'",
   "object-src 'none'",
   "base-uri 'none'",
@@ -117,6 +118,7 @@ export function createApp(config: Config) {
     const r = await renderMarkdown(a.source, {
       assetExists: (rel) => (a.dir ? assetExists(a.dir, rel) : false),
       sectionLevel: config.sectionLevel,
+      diagrams: config.diagrams,
     });
     const s = repos.getOrCreateSession(a.sourceKey, a.name, a.sha256);
     const diagnostics = [...r.diagnostics];

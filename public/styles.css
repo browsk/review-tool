@@ -123,14 +123,14 @@ main { padding: 1rem; }
 .doc-wrap { position: relative; }
 .margin-layer { position: absolute; inset: 0; pointer-events: none; }
 .hl-hidden .margin-layer { display: none; }
-.marker {
+.fb-marker {
   position: absolute; pointer-events: auto; display: inline-flex; align-items: center; gap: 0.15rem;
   min-width: 2.1rem; padding: 0 0.3rem; height: 1.3rem; font: 600 0.75rem/1 system-ui, sans-serif;
   color: var(--fg); background: var(--bg); border: 2px solid var(--muted); border-radius: 6px; cursor: pointer;
 }
-.marker.mk-reject { border-color: var(--hl-reject-line); }
-.marker.mk-cond { border-color: var(--hl-cond-line); }
-.marker.mk-accept { border-color: var(--hl-accept-line); }
+.fb-marker.mk-reject { border-color: var(--hl-reject-line); }
+.fb-marker.mk-cond { border-color: var(--hl-cond-line); }
+.fb-marker.mk-accept { border-color: var(--hl-accept-line); }
 .mk-glyph { font-size: 0.7rem; }
 
 .sel-ui { position: fixed; z-index: 30; max-width: 22rem; }
@@ -217,3 +217,35 @@ dialog textarea { width: 100%; resize: vertical; }
 @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
+
+/* ---- diagrams (Mermaid in the browser, D2 as server-rendered SVG with light and dark variants) */
+.diagram { position: relative; margin: 1.2rem 0; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
+.diagram-body { overflow-x: auto; }
+.diagram-body svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+.diagram-svg.dark { display: none; }
+:root[data-theme='dark'] .diagram-svg.light { display: none; }
+:root[data-theme='dark'] .diagram-svg.dark { display: block; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .diagram-svg.light { display: none; }
+  :root:not([data-theme='light']) .diagram-svg.dark { display: block; }
+}
+.diagram-notice { display: none; margin: 0.4rem 0; color: var(--warn); font-size: 0.9rem; }
+.diagram.failed .diagram-notice { display: block; }
+.diagram-source { display: none; margin-top: 0.4rem; }
+.diagram.show-source .diagram-source, .diagram.failed .diagram-source { display: block; }
+.diagram-source pre { margin: 0; }
+.diagram.failed { border-color: var(--warn); border-left-width: 4px; }
+.diagram-toolbar { position: absolute; top: 0.3rem; right: 0.3rem; z-index: 2; display: flex; gap: 0.3rem; opacity: 0; transition: opacity 0.12s; }
+.diagram:hover .diagram-toolbar, .diagram:focus-within .diagram-toolbar { opacity: 1; }
+.diagram-toolbar button { font: inherit; font-size: 0.8rem; color: var(--fg); background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 0.1rem 0.5rem; cursor: pointer; }
+.diagram-toolbar button:hover { border-color: var(--link); }
+.diagram[data-fb] { cursor: pointer; outline: 3px solid var(--muted); outline-offset: 2px; }
+.diagram[data-fb='reject'] { outline-color: var(--hl-reject-line); }
+.diagram[data-fb='cond'] { outline-color: var(--hl-cond-line); }
+.diagram[data-fb='accept'] { outline-color: var(--hl-accept-line); }
+.hl-hidden .diagram[data-fb] { outline: none; }
+.diagram-dialog { max-width: 96vw; width: 96vw; max-height: 94vh; overflow: auto; }
+.diagram-dialog .icon { position: sticky; top: 0; float: right; }
+.diagram-dialog svg { width: 100%; height: auto; }
+:root[data-theme='dark'] .diagram-dialog { background: var(--bg); }
+@media (prefers-reduced-motion: reduce) { .diagram-toolbar { transition: none; } }

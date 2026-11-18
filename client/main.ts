@@ -7,10 +7,16 @@ import { draw, initHighlightInteraction, initModel, highlightsVisible, resolveAn
 import { initSelection } from './annotate.js';
 import { initPanels } from './panels.js';
 
+import { initDiagrams } from './diagrams.js';
+
 initTheme();
 initDiagnostics();
 initZoom();
 initNavigation();
+{
+  const doc = document.getElementById('doc');
+  if (doc) initDiagrams(doc, { feedback: !!document.getElementById('fb-dialog') });
+}
 
 async function initFeedback(): Promise<void> {
   const doc = document.getElementById('doc');

@@ -1,7 +1,12 @@
 export interface ClientDiag {
   severity: 'warning' | 'error';
   message: string;
+  /** 1-based line in the source document, when known */
+  line?: number;
 }
+
+/** issues found in the browser, grouped by who reported them (so each reporter can replace its own list) */
+const channels = new Map<string, ClientDiag[]>();
 
 let base = { state: 'green', count: 0 };
 
@@ -34,7 +39,9 @@ export function initDiagnostics(): void {
 }
 
 /** Merge issues found in the browser (orphaned feedback, unsupported API, ...) into the indicator and panel. */
-export function setClientDiagnostics(list: ClientDiag[]): void {
+export function setClientDiagnostics(channel: string, reported: ClientDiag[]): void {
+  channels.set(channel, reported);
+  const list = [...channels.values()].flat();
   const btn = document.getElementById('diag-indicator');
   const panel = document.getElementById('diag-panel');
   if (!btn || !panel) return;
@@ -50,7 +57,7 @@ export function setClientDiagnostics(list: ClientDiag[]): void {
     const li = document.createElement('li');
     li.className = `client-diag sev-${d.severity}`;
     const sev = Object.assign(document.createElement('span'), { className: 'sev', textContent: d.severity });
-    const line = Object.assign(document.createElement('span'), { className: 'line', textContent: '' });
+    const line = Object.assign(document.createElement('span'), { className: 'line', textContent: d.line ? `line ${d.line}` : '' });
     const msg = Object.assign(document.createElement('span'), { className: 'msg', textContent: d.message });
     li.append(sev, line, msg);
     ul!.append(li);

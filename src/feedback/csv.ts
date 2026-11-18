@@ -66,6 +66,8 @@ export interface ImportRow {
   start: number | null;
   end: number | null;
   quote: string | null;
+  /** 'diagram' when the row anchors a whole diagram block (see inferKind) */
+  kind: 'text' | 'diagram';
   prefix: string;
   suffix: string;
   docSha: string;
@@ -88,6 +90,15 @@ export interface ImportParse {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/;
 const NON_NEG_INT = /^\d+$/;
+
+/**
+ * The CSV has no anchor-kind column. A diagram anchor covers exactly one character of the normalised text (the diagram's
+ * placeholder) but its quote is the diagram SOURCE, so its quote is longer than the span it covers; for text the
+ * quote and the span always have the same length.
+ */
+export function inferKind(start: number | null, end: number | null, quote: string | null): 'text' | 'diagram' {
+  return start !== null && end !== null && end - start === 1 && (quote ?? '').replace(/\\r\\n?/g, '\\n').length > 1 ? 'diagram' : 'text';
+}
 
 const validDate = (v: string) => ISO_DATE.test(v) && !Number.isNaN(Date.parse(v));
 
@@ -189,6 +200,7 @@ export function parseImport(content: string, currentSha: string): ImportParse {
       start,
       end,
       quote,
+      kind: scope === 'range' ? inferKind(start, end, quote) : 'text',
       prefix: get('quote_prefix'),
       suffix: get('quote_suffix'),
       docSha,

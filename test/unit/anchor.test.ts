@@ -58,3 +58,23 @@ describe('reanchor', () => {
     expect(reanchor('abc', { start: 0, end: 0, quote: '', prefix: '', suffix: '' })).toBeNull();
   });
 });
+
+import { reanchorDiagram } from '../../src/shared/anchor.js';
+
+describe('reanchorDiagram', () => {
+  const d = (start: number, source: string) => ({ start, end: start + 1, source });
+  it('finds a diagram by its source, whatever its new position', () => {
+    const diagrams = [d(10, 'graph TD\n  A --> B'), d(80, 'a -> b')];
+    expect(reanchorDiagram(diagrams, { start: 12, quote: 'a -> b' })).toEqual({ start: 80, end: 81, method: 'diagram' });
+    expect(reanchorDiagram(diagrams, { start: 999, quote: 'graph TD\n  A --> B' })).toEqual({ start: 10, end: 11, method: 'diagram' });
+  });
+  it('ignores CRLF and trailing whitespace differences (CSV round-trips)', () => {
+    expect(reanchorDiagram([d(5, 'a\nb')], { start: 0, quote: 'a\r\nb\r\n' })).toMatchObject({ start: 5 });
+  });
+  it('picks the nearest of several identical diagrams, and orphans a missing or empty one', () => {
+    const diagrams = [d(10, 'same'), d(50, 'same'), d(90, 'same')];
+    expect(reanchorDiagram(diagrams, { start: 55, quote: 'same' })!.start).toBe(50);
+    expect(reanchorDiagram(diagrams, { start: 0, quote: 'edited' })).toBeNull();
+    expect(reanchorDiagram(diagrams, { start: 0, quote: '  ' })).toBeNull();
+  });
+});

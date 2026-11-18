@@ -1,9 +1,12 @@
-import { createHighlighter, type Highlighter } from 'shiki';
+import { bundledLanguages, createHighlighter, type Highlighter } from 'shiki';
 import { visit } from 'unist-util-visit';
 import type { Root, Element, ElementContent } from 'hast';
 import type { Diagnostic } from './diagnostics.js';
+import { escapeHtml } from './escape.js';
 
-const LANGS = ['ts', 'js', 'json', 'bash', 'sh', 'yaml', 'sql', 'java', 'python', 'csharp', 'html', 'css', 'xml', 'markdown', 'diff', 'powershell'];
+// diagram languages are included so diagram sources can be shown highlighted (only those Shiki knows are loaded)
+const WANTED = ['ts', 'js', 'json', 'bash', 'sh', 'yaml', 'sql', 'java', 'python', 'csharp', 'html', 'css', 'xml', 'markdown', 'diff', 'powershell', 'mermaid', 'd2'];
+const LANGS = WANTED.filter((l) => l in bundledLanguages);
 let highlighterP: Promise<Highlighter> | undefined;
 
 function getHighlighter(): Promise<Highlighter> {
@@ -11,7 +14,20 @@ function getHighlighter(): Promise<Highlighter> {
   return highlighterP;
 }
 
-const DIAGRAM_LANGS = new Set(['mermaid', 'd2']);
+/** Highlighted HTML (Shiki, bundled) for a diagram source; plain escaped <pre> if the language is unknown or Shiki fails. */
+export async function highlightToHtml(source: string, lang: string): Promise<string> {
+  try {
+    const hl = await getHighlighter();
+    if (hl.getLoadedLanguages().includes(lang)) {
+      return hl.codeToHtml(source, { lang, themes: { light: 'github-light', dark: 'github-dark' }, defaultColor: false });
+    }
+  } catch {
+    /* fall through to plain */
+  }
+  return `<pre class="shiki-plain"><code>${escapeHtml(source)}</code></pre>`;
+}
+
+const DIAGRAM_LANGS = new Set<string>();
 
 /** Syntax-highlight fenced code with Shiki (bundled, local). Failures degrade to plain <pre>. */
 export function highlightPlugin(diags: Diagnostic[]) {

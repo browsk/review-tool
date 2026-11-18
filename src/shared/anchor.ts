@@ -9,6 +9,27 @@ export interface AnchorLike {
 export type Method = 'offset' | 'quote' | 'context' | 'nearest';
 export type ReanchorResult = { start: number; end: number; method: Method } | null;
 
+export interface DiagramTarget {
+  start: number;
+  end: number;
+  source: string;
+}
+
+/**
+ * Re-attach feedback on a whole diagram. The quote is the diagram's source text, so the diagram is found by
+ * matching sources (CRLF- and trailing-whitespace-insensitive). If several diagrams have identical source, the
+ * one nearest the old offset wins.
+ */
+export function reanchorDiagram(diagrams: DiagramTarget[], a: { start: number; quote: string }): { start: number; end: number; method: 'diagram' } | null {
+  const norm = (s: string) => s.replace(/\r\n?/g, '\n').trimEnd();
+  const q = norm(a.quote);
+  if (!q) return null;
+  const hits = diagrams.filter((d) => norm(d.source) === q);
+  if (!hits.length) return null;
+  const best = hits.reduce((m, d) => (Math.abs(d.start - a.start) < Math.abs(m.start - a.start) ? d : m));
+  return { start: best.start, end: best.end, method: 'diagram' };
+}
+
 /** CSV round-trips may turn "\n" into "\r\n". */
 export const normaliseQuote = (q: string) => q.replace(/\r\n?/g, '\n');
 

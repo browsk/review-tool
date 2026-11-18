@@ -65,7 +65,7 @@ test('2,000-line document with 200 feedback items renders and highlights in unde
       (CSS as any).highlights.forEach((h: any) => (n += h.size));
       return n;
     })(),
-    markers: document.querySelectorAll('.marker').length,
+    markers: document.querySelectorAll('.fb-marker').length,
   }));
   console.log(`perf: ${lines} lines, 200 items -> highlights=${t.highlights} markers=${t.markers} client-init=${t.init.toFixed(0)}ms ready-after-navigation=${t.ready.toFixed(0)}ms`);
   expect(t.highlights).toBe(200);

@@ -11,8 +11,13 @@ import { toString } from 'mdast-util-to-string';
 import type { Root, Content, Heading, Code, Image } from 'mdast';
 import type { Diagnostic } from './diagnostics.js';
 import { schema } from './sanitize.js';
-import { highlightPlugin } from './highlight.js';
+import { highlightPlugin, highlightToHtml } from './highlight.js';
 import { sectionsPlugin, type Section } from './sections.js';
+import { escapeHtml } from './escape.js';
+import { diagramsPlugin, finalizeDiagrams, type DiagramSlot } from './diagrams.js';
+import { renderersFor } from '../diagrams/registry.js';
+import type { DiagramRenderer, DiagramSettings } from '../diagrams/types.js';
+import { randomUUID } from 'node:crypto';
 
 export interface RenderOptions {
   /** returns true if a relative asset exists (resolved against the document directory) */
@@ -21,6 +26,10 @@ export interface RenderOptions {
   assetPrefix?: string;
   /** heading depth that opens a feedback section (default 2) */
   sectionLevel?: number;
+  /** D2/Mermaid settings (theme ids, layout, timeout) */
+  diagrams?: DiagramSettings;
+  /** override the diagram renderers (tests) */
+  renderers?: Map<string, DiagramRenderer>;
 }
 
 export interface RenderResult {
@@ -32,9 +41,7 @@ export interface RenderResult {
   failed: boolean;
 }
 
-export function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
+export { escapeHtml };
 
 export function slugify(s: string): string {
   return s
@@ -199,6 +206,8 @@ export function looksBinary(buf: Buffer): boolean {
 export async function renderMarkdown(source: string, opts: RenderOptions = {}): Promise<RenderResult> {
   const diagnostics: Diagnostic[] = [];
   const sections: Section[] = [];
+  const slots: DiagramSlot[] = [];
+  const nonce = randomUUID().replace(/-/g, '');
   let frontmatter: string | undefined;
   try {
     const processor = unified()
@@ -211,12 +220,15 @@ export async function renderMarkdown(source: string, opts: RenderOptions = {}): 
       .use(analysePlugin(source, diagnostics, opts))
       .use(remarkRehype, { allowDangerousHtml: true })
       .use(rehypeRaw)
+      .use(diagramsPlugin({ source, renderers: opts.renderers ?? renderersFor(opts.diagrams), nonce, slots, diags: diagnostics }))
       .use(sectionsPlugin(opts.sectionLevel ?? 2, sections))
       .use(highlightPlugin(diagnostics))
       .use(rehypeSanitize, schema)
       .use(rehypeStringify);
     const file = await processor.process(source);
-    return { html: String(file), diagnostics, frontmatter, sections, failed: false };
+    // figures (with their separately sanitised SVG) are inserted after sanitising, via unforgeable markers
+    const html = slots.length ? await finalizeDiagrams(String(file), slots, highlightToHtml) : String(file);
+    return { html, diagnostics, frontmatter, sections, failed: false };
   } catch (err) {
     diagnostics.push({
       severity: 'error',

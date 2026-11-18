@@ -57,17 +57,13 @@ function evaluateSelection(): void {
   placeNear(r.getBoundingClientRect());
   if (check.ok) {
     const q = quoteFor(model, s, e);
-    const hasDiagram = model.diagrams.some((d) => d.start >= s && d.end <= e);
+    const inside = model.diagrams.filter((d) => d.start >= s && d.end <= e);
+    // a selection that is exactly one diagram (e.g. text selected inside its SVG snaps to the whole block)
+    const wholeDiagram = inside.length === 1 && q.quote.replace(/￼/g, '').trim() === '';
     pending = {
-      anchor: {
-        start: s,
-        end: e,
-        quote: q.quote,
-        prefix: q.prefix,
-        suffix: q.suffix,
-        sectionHeading: check.section.heading,
-        kind: hasDiagram && q.quote.replace(/￼/g, '').trim() === '' ? 'diagram' : 'text',
-      },
+      anchor: wholeDiagram
+        ? { start: inside[0]!.start, end: inside[0]!.end, quote: inside[0]!.source, prefix: '', suffix: '', sectionHeading: check.section.heading, kind: 'diagram' }
+        : { start: s, end: e, quote: q.quote, prefix: q.prefix, suffix: q.suffix, sectionHeading: check.section.heading, kind: 'text' },
     };
     add.hidden = false;
   } else if (check.reason === 'spans-sections') {
@@ -108,6 +104,18 @@ export function initSelection(el: HTMLElement): void {
     const anchor = pending.anchor;
     hideSelectionUi();
     openFeedbackDialog({ mode: 'create', anchor });
+  });
+  // the hover button on a diagram: feedback anchored to the whole diagram block (quote = its source)
+  document.addEventListener('rt:diagram-feedback', (e) => {
+    const model = getModel();
+    const d = model.diagrams.find((x) => x.el === (e as CustomEvent<Element>).detail);
+    if (!d) return;
+    const check = validateSelection(getSections(), d.start, d.end);
+    hideSelectionUi();
+    openFeedbackDialog({
+      mode: 'create',
+      anchor: { start: d.start, end: d.end, quote: d.source, prefix: '', suffix: '', sectionHeading: check.ok ? check.section.heading : '', kind: 'diagram' },
+    });
   });
 }
 

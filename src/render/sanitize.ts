@@ -26,8 +26,6 @@ export const schema: Options = {
       'dataSrcEnd',
       'dataSectionId',
       'dataNoAnchor',
-      'dataDiagramLang',
-      'dataSrc',
     ],
     code: [...(defaultSchema.attributes?.code ?? []), ['className', /^(language-|shiki|hljs)[\w-]*$/]],
     pre: [

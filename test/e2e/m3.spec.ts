@@ -23,8 +23,8 @@ test.describe('range feedback', () => {
 
     const hl = await highlightInfo(page);
     expect(hl['rt-reject']!.text).toEqual([Q1]);
-    await expect(page.locator('.marker')).toHaveCount(1);
-    await expect(page.locator('.marker .mk-count')).toHaveText('1');
+    await expect(page.locator('.fb-marker')).toHaveCount(1);
+    await expect(page.locator('.fb-marker .mk-count')).toHaveText('1');
     await expect(page.locator('#all-count')).toHaveText('1');
 
     await reload(page);
@@ -174,8 +174,8 @@ test.describe('range feedback', () => {
     await expect(page.locator('#side-panel .fb-card')).toHaveCount(1);
 
     // margin marker shows the count of items in the block and opens the panel
-    await expect(page.locator('.marker .mk-count')).toHaveText('2');
-    await page.locator('.marker').click();
+    await expect(page.locator('.fb-marker .mk-count')).toHaveText('2');
+    await page.locator('.fb-marker').click();
     await expect(page.locator('#side-panel .fb-card')).toHaveCount(2);
   });
 
@@ -227,7 +227,7 @@ test.describe('range feedback', () => {
     await page.click('#confirm-yes');
     await expect(page.locator('#side-panel .fb-card')).toHaveCount(0);
     expect(Object.keys(await highlightInfo(page))).toEqual([]);
-    await expect(page.locator('.marker')).toHaveCount(0);
+    await expect(page.locator('.fb-marker')).toHaveCount(0);
     await reload(page);
     await expect(page.locator('#all-count')).toHaveText('0');
   });
@@ -239,11 +239,11 @@ test.describe('range feedback', () => {
     await addFeedbackViaDialog(page, { reviewer: 'Bob', status: 'Reject', comment: 'x' });
     await page.click('#btn-hl');
     expect(Object.keys(await highlightInfo(page))).toEqual([]);
-    await expect(page.locator('.marker')).toHaveCount(0);
+    await expect(page.locator('.fb-marker')).toHaveCount(0);
     await expect(page.locator('#all-count')).toHaveText('1');
     await page.click('#btn-hl');
     expect((await highlightInfo(page))['rt-reject']!.size).toBe(1);
-    await expect(page.locator('.marker')).toHaveCount(1);
+    await expect(page.locator('.fb-marker')).toHaveCount(1);
   });
 
   for (const scheme of ['light', 'dark'] as const) {
