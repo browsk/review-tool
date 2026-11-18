@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test, expect } from './fixtures.js';
-import { addFeedbackViaDialog, copyDoc, highlightInfo, loadCopy, loadPath, pointOf, reload, seedParticipants, selectText } from './helpers.js';
+import { addFeedbackViaDialog, settle, copyDoc, highlightInfo, loadCopy, loadPath, pointOf, reload, seedParticipants, selectText } from './helpers.js';
 
 const PEOPLE = [{ name: 'Ada', role: 'author' as const }, { name: 'Bob' }, { name: 'Cy' }];
 const Q1 = 'Paragraph 2 of section 1.1.';
@@ -82,6 +82,7 @@ test.describe('range feedback', () => {
       s.addRange(r);
       document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
     });
+    await settle(page);
     await expect(page.locator('#sel-ui')).toBeHidden();
     // from the header (app chrome) into the document
     await page.evaluate(() => {
@@ -91,14 +92,19 @@ test.describe('range feedback', () => {
       s.setBaseAndExtent(title, 0, p, 5);
       document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
     });
+    await settle(page);
     await expect(page.locator('#sel-ui')).toBeHidden();
     // whitespace between two blocks
     await page.evaluate(() => {
-      const blocks = document.querySelectorAll('#doc p');
+      // two ADJACENT paragraphs: from the end of one to the very start of the next (only the break between them)
+      const first = document.querySelectorAll('#doc p')[2]!;
+      const second = first.nextElementSibling!;
+      if (second.tagName !== 'P') throw new Error('expected adjacent paragraphs');
       const s = getSelection()!;
-      s.setBaseAndExtent(blocks[0]!, blocks[0]!.childNodes.length, blocks[1]!, 0);
+      s.setBaseAndExtent(first, first.childNodes.length, second, 0);
       document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
     });
+    await settle(page);
     await expect(page.locator('#sel-ui')).toBeHidden();
   });
 
@@ -118,14 +124,14 @@ test.describe('range feedback', () => {
     await seedParticipants(page, PEOPLE);
     await selectText(page, Q1);
     await page.click('#sel-add');
-    await page.getByLabel('Reject', { exact: true }).check();
+    await page.locator('#fb-dialog').getByLabel('Reject', { exact: true }).check();
     await page.click('#fb-save');
     await expect(page.locator('#fb-error')).toContainText('comment is required');
     await expect(page.locator('#fb-dialog')).toBeVisible();
-    await page.getByLabel('Accept with conditions').check();
+    await page.locator('#fb-dialog').getByLabel('Accept with conditions').check();
     await page.click('#fb-save');
     await expect(page.locator('#fb-error')).toContainText('comment is required');
-    await page.getByLabel('Accept', { exact: true }).check();
+    await page.locator('#fb-dialog').getByLabel('Accept', { exact: true }).check();
     await page.click('#fb-save');
     await expect(page.locator('#fb-dialog')).toBeHidden();
     expect((await highlightInfo(page))['rt-accept']!.size).toBe(1);
@@ -206,7 +212,7 @@ test.describe('range feedback', () => {
     await addFeedbackViaDialog(page, { reviewer: 'Bob', status: 'Reject', comment: 'first' });
     await page.click('#btn-all-feedback');
     await page.getByRole('button', { name: 'Edit' }).click();
-    await page.getByLabel('Accept', { exact: true }).check();
+    await page.locator('#fb-dialog').getByLabel('Accept', { exact: true }).check();
     await page.fill('#fb-comment', 'changed my mind');
     await page.click('#fb-save');
     await expect(page.locator('#side-panel .fb-card')).toContainText('changed my mind');
@@ -372,7 +378,7 @@ test.describe('participants', () => {
     fs.writeFileSync(csv, 'name,email,role\nBob,bob@example.com,reviewer\nCy,,author\n');
     await page.setInputFiles('#ppl-file', csv);
     await expect(page.locator('#ppl-report')).toContainText('Imported 2 participants');
-    await expect(page.locator('#ppl-report')).toContainText('Exactly one author is expected; found 2');
+    await expect(page.locator('#ppl-warning')).toContainText('Several authors are set (2)');
     await expect(page.locator('#ppl-list li')).toHaveCount(3);
   });
 
@@ -408,7 +414,7 @@ test.describe('participants', () => {
     await page.click('#sel-add');
     await expect(page.locator('#fb-newreviewer')).toBeVisible(); // no participants yet
     await page.fill('#fb-newname', 'Dana');
-    await page.getByLabel('Accept', { exact: true }).check();
+    await page.locator('#fb-dialog').getByLabel('Accept', { exact: true }).check();
     await page.click('#fb-save');
     await expect(page.locator('#fb-dialog')).toBeHidden();
     await page.click('#btn-participants');

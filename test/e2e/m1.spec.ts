@@ -1,12 +1,12 @@
 import path from 'node:path';
 import { test, expect } from './fixtures.js';
+import { submitLoad } from './helpers.js';
 
 const fx = (n: string) => path.resolve('test/fixtures', n);
 
 async function load(page: import('@playwright/test').Page, file: string) {
   await page.goto('/');
-  await page.fill('#path-input', fx(file));
-  await page.click('form[action="/load/local"] >> text=Load');
+  await submitLoad(page, fx(file));
 }
 
 test('loads a valid document: renders and shows a green indicator', async ({ page }) => {

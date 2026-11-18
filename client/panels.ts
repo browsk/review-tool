@@ -1,7 +1,8 @@
-import { SEVERITY, STATUSES, type Status } from '../src/feedback/model.js';
+import { SEVERITY, STATUSES, authorWarning, type Status } from '../src/feedback/model.js';
 import { api } from './api.js';
 import { confirmDelete, openFeedbackDialog } from './annotate.js';
 import { flashItem } from './highlights.js';
+import { startImport } from './importer.js';
 import { store, type FeedbackItem } from './store.js';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -17,6 +18,7 @@ const GLYPH: Record<Status, string> = { Reject: '✕', 'Accept with conditions':
 type View =
   | { kind: 'items'; title: string; ids: string[] }
   | { kind: 'all' }
+  | { kind: 'doc' }
   | { kind: 'participants' };
 
 let view: View | null = null;
@@ -109,38 +111,75 @@ function renderItems(v: Extract<View, { kind: 'items' }>): void {
   p.append(list);
 }
 
-function renderAll(): void {
-  const p = panel();
-  p.replaceChildren(header(`All feedback (${store.feedback.length})`));
+// ------------------------------------------------------------ filters (shared by All and Document panels)
+
+function filtersBar(): HTMLElement {
   const bar = el('div', 'fb-filters');
   const st = el('select');
   st.id = 'flt-status';
+  st.setAttribute('aria-label', 'Filter by status');
   st.append(Object.assign(el('option'), { value: '', textContent: 'All statuses' }));
   STATUSES.forEach((s) => st.append(Object.assign(el('option'), { value: s, textContent: s })));
   st.value = filters.status;
   st.onchange = () => ((filters.status = st.value), render());
   const rv = el('select');
   rv.id = 'flt-reviewer';
+  rv.setAttribute('aria-label', 'Filter by reviewer');
   rv.append(Object.assign(el('option'), { value: '', textContent: 'All reviewers' }));
   store.participants.forEach((q) => rv.append(Object.assign(el('option'), { value: q.id, textContent: q.name })));
   rv.value = filters.reviewer;
   rv.onchange = () => ((filters.reviewer = rv.value), render());
   const so = el('select');
   so.id = 'flt-sort';
+  so.setAttribute('aria-label', 'Sort');
   so.append(Object.assign(el('option'), { value: 'newest', textContent: 'Newest first' }), Object.assign(el('option'), { value: 'oldest', textContent: 'Oldest first' }));
   so.value = filters.sort;
   so.onchange = () => ((filters.sort = so.value), render());
-  [st, rv, so].forEach((s) => s.setAttribute('aria-label', s.id));
   bar.append(st, rv, so);
-  p.append(bar);
+  return bar;
+}
 
-  const match = (f: FeedbackItem) => (!filters.status || f.status === filters.status) && (!filters.reviewer || f.reviewerId === filters.reviewer);
+function filtered(xs: FeedbackItem[]): FeedbackItem[] {
   const dir = filters.sort === 'newest' ? -1 : 1;
-  const sorted = (xs: FeedbackItem[]) => xs.filter(match).sort((a, b) => dir * (a.createdEpoch - b.createdEpoch));
+  return xs
+    .filter((f) => (!filters.status || f.status === filters.status) && (!filters.reviewer || f.reviewerId === filters.reviewer))
+    .sort((a, b) => dir * (a.createdEpoch - b.createdEpoch));
+}
 
-  const docItems = sorted(store.feedback.filter((f) => f.scope === 'document'));
-  const located = sorted(store.rangeItems().filter((f) => store.resolved.has(f.id)));
-  const lost = sorted(store.orphans());
+function toolbar(): HTMLElement {
+  const t = el('div', 'fb-toolbar');
+  const exp = el('a', 'btn', 'Export CSV');
+  exp.id = 'export-link';
+  exp.setAttribute('href', '/export.csv');
+  exp.setAttribute('download', '');
+  const imp = el('button', undefined, 'Import CSV…');
+  imp.type = 'button';
+  imp.id = 'import-btn';
+  const file = el('input');
+  file.type = 'file';
+  file.id = 'import-file';
+  file.accept = '.csv,text/csv';
+  file.hidden = true;
+  file.setAttribute('aria-label', 'Feedback CSV file');
+  imp.onclick = () => file.click();
+  file.onchange = async () => {
+    const f = file.files?.[0];
+    if (!f) return;
+    const text = await f.text();
+    file.value = '';
+    await startImport(f.name, text);
+  };
+  t.append(exp, imp, file);
+  return t;
+}
+
+function renderAll(): void {
+  const p = panel();
+  p.replaceChildren(header(`All feedback (${store.feedback.length})`));
+  p.append(toolbar(), filtersBar());
+  const docItems = filtered(store.feedback.filter((f) => f.scope === 'document'));
+  const located = filtered(store.rangeItems().filter((f) => store.resolved.has(f.id)));
+  const lost = filtered(store.orphans());
   const group = (title: string, xs: FeedbackItem[], orphan = false) => {
     if (!xs.length) return;
     const g = el('section', 'fb-group');
@@ -154,6 +193,23 @@ function renderAll(): void {
   if (!docItems.length && !located.length && !lost.length) p.append(el('p', 'empty', 'No feedback matches.'));
 }
 
+function renderDoc(): void {
+  const p = panel();
+  const all = store.feedback.filter((f) => f.scope === 'document');
+  p.replaceChildren(header(`Document feedback (${all.length})`));
+  const add = el('button', 'primary', 'Add document feedback');
+  add.type = 'button';
+  add.id = 'add-doc-feedback';
+  add.onclick = () => openFeedbackDialog({ mode: 'create', anchor: null });
+  p.append(add, filtersBar());
+  const items = filtered(all);
+  const list = el('div', 'fb-list');
+  items.forEach((f) => list.append(card(f)));
+  p.append(list);
+  if (!all.length) p.append(el('p', 'empty', 'No whole-document feedback yet.'));
+  else if (!items.length) p.append(el('p', 'empty', 'No feedback matches.'));
+}
+
 // ------------------------------------------------------------ participants
 
 function renderParticipants(): void {
@@ -163,7 +219,18 @@ function renderParticipants(): void {
   list.id = 'ppl-list';
   for (const q of store.participants) {
     const li = el('li');
-    li.append(el('span', 'ppl-name', q.name), el('span', 'ppl-role', q.role));
+    li.append(el('span', 'ppl-name', q.name));
+    const role = el('select', 'ppl-role-select');
+    role.setAttribute('aria-label', `Role of ${q.name}`);
+    role.dataset.id = q.id;
+    for (const r of ['reviewer', 'author']) role.append(Object.assign(el('option'), { value: r, textContent: r }));
+    role.value = q.role;
+    role.onchange = async () => {
+      const r = await api('PATCH', `/api/participants/${q.id}`, { role: role.value });
+      if (r.ok) store.setParticipants(r.data.participants);
+      else role.value = q.role;
+    };
+    li.append(role);
     if (q.email) li.append(el('span', 'ppl-email', q.email));
     const used = store.feedback.some((f) => f.reviewerId === q.id);
     if (!used) {
@@ -180,9 +247,11 @@ function renderParticipants(): void {
   }
   if (!store.participants.length) p.append(el('p', 'empty', 'No participants yet. Add people below or import a file.'));
   p.append(list);
-  const authors = store.participants.filter((q) => q.role === 'author').length;
-  if (store.participants.length && authors !== 1) {
-    p.append(el('p', 'warn', `Exactly one author is expected; found ${authors}.`));
+  const w = store.participants.length ? authorWarning(store.participants.filter((q) => q.role === 'author').length) : null;
+  if (w) {
+    const warn = el('p', 'warn', w);
+    warn.id = 'ppl-warning';
+    p.append(warn);
   }
 
   const form = el('form', 'ppl-add');
@@ -246,12 +315,33 @@ function renderParticipants(): void {
     const ok = el('div');
     ok.append(el('p', undefined, `Imported ${r.data.added.length} participant${r.data.added.length === 1 ? '' : 's'}.`));
     if (r.data.skipped.length) ok.append(el('p', 'hint', `Already present, skipped: ${r.data.skipped.join(', ')}`));
-    for (const w of r.data.warnings as string[]) ok.append(el('p', 'warn', w));
-    store.setParticipants(r.data.participants); // re-renders the panel...
+    store.setParticipants(r.data.participants); // re-renders the panel (and shows the author warning)...
     $('ppl-report')?.replaceChildren(ok); // ...so write the report into the new element
   };
   imp.append(file, report);
   p.append(imp);
+}
+
+// ------------------------------------------------------------ summary chip
+
+export function updateSummary(): void {
+  const chip = document.getElementById('fb-summary');
+  if (!chip) return;
+  const counts: Record<Status, number> = { Reject: 0, 'Accept with conditions': 0, Accept: 0 };
+  for (const f of store.feedback) counts[f.status]++;
+  chip.replaceChildren(
+    ...(Object.keys(SEVERITY) as Status[]).map((s) => {
+      const span = el('span', `sum sum-${STATUS_CLASS[s]}`);
+      span.append(el('span', 'sum-glyph', GLYPH[s]), document.createTextNode(String(counts[s])));
+      return span;
+    }),
+  );
+  const label = `Feedback summary: ${counts.Reject} Reject, ${counts['Accept with conditions']} Accept with conditions, ${counts.Accept} Accept`;
+  chip.setAttribute('aria-label', label);
+  chip.title = label;
+  chip.dataset.reject = String(counts.Reject);
+  chip.dataset.cond = String(counts['Accept with conditions']);
+  chip.dataset.accept = String(counts.Accept);
 }
 
 // ------------------------------------------------------------ wiring
@@ -262,16 +352,18 @@ function render(): void {
   const focus = document.activeElement?.id;
   if (view.kind === 'items') renderItems(view);
   else if (view.kind === 'all') renderAll();
+  else if (view.kind === 'doc') renderDoc();
   else renderParticipants();
   if (report && $('ppl-report')) $('ppl-report').innerHTML = report;
   if (focus) document.getElementById(focus)?.focus();
-  const n = $('all-count');
-  if (n) n.textContent = String(store.feedback.length);
 }
 
 export function initPanels(): void {
-  $('btn-all-feedback')?.addEventListener('click', () => (view?.kind === 'all' && !panel().hidden ? closePanel() : open({ kind: 'all' })));
-  $('btn-participants')?.addEventListener('click', () => (view?.kind === 'participants' && !panel().hidden ? closePanel() : open({ kind: 'participants' })));
+  const toggle = (kind: View['kind']) => () => (view?.kind === kind && !panel().hidden ? closePanel() : open({ kind } as View));
+  $('btn-all-feedback')?.addEventListener('click', toggle('all'));
+  $('btn-participants')?.addEventListener('click', toggle('participants'));
+  $('btn-doc-feedback')?.addEventListener('click', toggle('doc'));
+  $('fb-summary')?.addEventListener('click', toggle('all'));
   document.addEventListener('rt:show-items', (e) => {
     const d = (e as CustomEvent<{ title: string; ids: string[] }>).detail;
     open({ kind: 'items', title: d.title, ids: d.ids });
@@ -279,11 +371,12 @@ export function initPanels(): void {
   document.addEventListener('rt:close-panels', () => {
     if (!panel().hidden) closePanel();
   });
-  store.addEventListener('change', () => {
+  const refresh = () => {
     const n = $('all-count');
     if (n) n.textContent = String(store.feedback.length);
+    updateSummary();
     render();
-  });
-  const n = $('all-count');
-  if (n) n.textContent = String(store.feedback.length);
+  };
+  store.addEventListener('change', refresh);
+  refresh();
 }

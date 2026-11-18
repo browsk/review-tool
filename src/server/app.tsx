@@ -89,7 +89,7 @@ export function createApp(config: Config) {
     c.res.headers.set('Cache-Control', 'no-store');
   });
 
-  registerApi(app, { repos, state });
+  registerApi(app, { repos, state, dataDir: config.dataDir });
 
   const page = (c: Context, opts: { error?: string; status?: 200 | 400 } = {}) =>
     c.html(

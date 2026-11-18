@@ -5,6 +5,13 @@ export type Scope = (typeof SCOPES)[number];
 export const ROLES = ['author', 'reviewer'] as const;
 export type Role = (typeof ROLES)[number];
 
+/** Friendly warning about the author count (exactly one is expected); null when fine. */
+export function authorWarning(authors: number): string | null {
+  if (authors === 1) return null;
+  if (authors === 0) return 'No author is set. Mark one participant as the author so exports show who wrote the document.';
+  return `Several authors are set (${authors}); exactly one author is expected.`;
+}
+
 /** Higher is more severe: Reject > Accept with conditions > Accept */
 export const SEVERITY: Record<Status, number> = { Reject: 3, 'Accept with conditions': 2, Accept: 1 };
 

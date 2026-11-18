@@ -1,13 +1,13 @@
 import path from 'node:path';
 import { test, expect } from './fixtures.js';
+import { submitLoad } from './helpers.js';
 import type { Page } from '@playwright/test';
 
 const fx = (n: string) => path.resolve('test/fixtures', n);
 
 async function load(page: Page, file = 'arc42-long.md') {
   await page.goto('/');
-  await page.fill('#path-input', fx(file));
-  await page.click('form[action="/load/local"] >> text=Load');
+  await submitLoad(page, fx(file));
   await expect(page.locator('#doc')).toBeVisible();
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
 }

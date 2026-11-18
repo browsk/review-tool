@@ -34,6 +34,25 @@ export interface FeedbackRow {
   anchoredSha256: string | null;
 }
 
+export interface ImportRowLike {
+  row: number;
+  id: string;
+  scope: Scope;
+  status: Status;
+  reviewer: string;
+  reviewerRole: Role;
+  createdAt: string;
+  updatedAt: string;
+  comment: string;
+  sectionHeading: string;
+  start: number | null;
+  end: number | null;
+  quote: string | null;
+  prefix: string;
+  suffix: string;
+  docSha: string;
+}
+
 export class DuplicateParticipantError extends Error {}
 export class ParticipantInUseError extends Error {}
 export class NotFoundError extends Error {}
@@ -129,6 +148,61 @@ export function createRepos(db: DB) {
         throw e;
       }
       return { id, name: p.name.trim(), email: p.email?.trim() || null, role: p.role ?? 'reviewer' };
+    },
+
+    setParticipantRole(sessionId: string, id: string, role: Role): ParticipantRow {
+      const r = db.prepare('UPDATE participants SET role = ? WHERE id = ? AND session_id = ?').run(role, id, sessionId);
+      if (!r.changes) throw new NotFoundError('Participant not found.');
+      return this.listParticipants(sessionId).find((p) => p.id === id)!;
+    },
+
+    /**
+     * Import validated CSV rows in ONE transaction. Replace clears this session's feedback first
+     * (participants are kept). Rows whose id already exists in this session are skipped as duplicates;
+     * ids that belong to another review session are reported as conflicts. Unknown reviewers are added
+     * (case-insensitive name match) with the role from the file.
+     */
+    importFeedback(sessionId: string, mode: 'replace' | 'merge', rows: ImportRowLike[]) {
+      const imported: string[] = [];
+      const duplicates: string[] = [];
+      const conflicts: { row: number; id: string }[] = [];
+      const addedReviewers: string[] = [];
+      db.transaction(() => {
+        if (mode === 'replace') db.prepare('DELETE FROM feedback WHERE session_id = ?').run(sessionId);
+        const mine = new Set((db.prepare('SELECT id FROM feedback WHERE session_id = ?').all(sessionId) as Raw[]).map((r) => r.id as string));
+        const byName = new Map(this.listParticipants(sessionId).map((p) => [p.name.toLowerCase(), p.id]));
+        const insert = db.prepare(
+          `INSERT INTO feedback(id, session_id, scope, status, comment, reviewer_id, created_at, created_epoch, updated_at,
+             start_offset, end_offset, quote_exact, quote_prefix, quote_suffix, section_heading, anchor_kind, anchored_sha256, textmodel_version)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        );
+        const exists = db.prepare('SELECT 1 FROM feedback WHERE id = ?');
+        for (const r of rows) {
+          if (mine.has(r.id)) {
+            duplicates.push(r.id);
+            continue;
+          }
+          if (exists.get(r.id)) {
+            conflicts.push({ row: r.row, id: r.id });
+            continue;
+          }
+          let reviewerId = byName.get(r.reviewer.toLowerCase());
+          if (!reviewerId) {
+            reviewerId = this.addParticipant(sessionId, { name: r.reviewer, role: r.reviewerRole }).id;
+            byName.set(r.reviewer.toLowerCase(), reviewerId);
+            addedReviewers.push(r.reviewer);
+          }
+          const range = r.scope === 'range';
+          insert.run(
+            r.id, sessionId, r.scope, r.status, r.comment, reviewerId, r.createdAt, Date.parse(r.createdAt), r.updatedAt,
+            range ? r.start : null, range ? r.end : null, range ? r.quote : null, range ? r.prefix : null, range ? r.suffix : null,
+            range ? r.sectionHeading : null, range ? 'text' : null, range ? r.docSha || null : null, range ? TEXTMODEL_VERSION : null,
+          );
+          mine.add(r.id);
+          imported.push(r.id);
+        }
+      })();
+      return { imported, duplicates, conflicts, addedReviewers };
     },
 
     deleteParticipant(sessionId: string, id: string) {

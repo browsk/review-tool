@@ -57,9 +57,13 @@ export function Page(props: { token: string; doc: CurrentDoc | null; navMaxLevel
               <button type="button" id="btn-all-feedback" title="All feedback">
                 Feedback <span id="all-count" class="count">0</span>
               </button>
+              <button type="button" id="btn-doc-feedback" title="Feedback on the whole document">
+                Document feedback
+              </button>
               <button type="button" id="btn-participants" title="Participants">
                 Participants
               </button>
+              <button type="button" id="fb-summary" class="summary" aria-label="Feedback summary" title="Feedback summary"></button>
             </>
           ) : null}
           <button
@@ -141,6 +145,18 @@ function FeedbackChrome() {
             </button>
           </div>
         </form>
+      </dialog>
+      <dialog id="import-dialog" aria-labelledby="imp-title">
+        <h2 id="imp-title">Import feedback</h2>
+        <div id="imp-body"></div>
+        <div class="actions">
+          <button type="button" id="imp-cancel">
+            Cancel
+          </button>
+          <button type="button" id="imp-go">
+            Import
+          </button>
+        </div>
       </dialog>
       <dialog id="confirm-dialog" aria-labelledby="confirm-text">
         <p id="confirm-text"></p>

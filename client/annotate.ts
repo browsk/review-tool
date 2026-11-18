@@ -46,8 +46,7 @@ function evaluateSelection(): void {
   if (!docEl.contains(r.startContainer) || !docEl.contains(r.endContainer)) return hideSelectionUi();
   const model = getModel();
   let s = offsetOf(model, r.startContainer, r.startOffset, 'start');
-  let e = offsetOf(model, r.endContainer, r.endOffset, 'end');
-  if (s === null || e === null) return hideSelectionUi();
+  let e = offsetOf(model, r.endContainer, r.endOffset, 'end');  if (s === null || e === null) return hideSelectionUi();
   // trim leading/trailing whitespace (triple-click selects the trailing line break)
   while (s < e && /\s/.test(model.text[s] as string)) s++;
   while (e > s && /\s/.test(model.text[e - 1] as string)) e--;
@@ -114,7 +113,8 @@ export function initSelection(el: HTMLElement): void {
 
 // ------------------------------------------------------------------ feedback dialog
 
-type DialogOpts = { mode: 'create'; anchor: Anchor } | { mode: 'edit'; item: FeedbackItem };
+/** create with anchor = range feedback; create with anchor null = whole-document feedback */
+type DialogOpts = { mode: 'create'; anchor: Anchor | null } | { mode: 'edit'; item: FeedbackItem };
 
 export function openFeedbackDialog(opts: DialogOpts): void {
   const dlg = $<HTMLDialogElement>('fb-dialog');
@@ -129,8 +129,8 @@ export function openFeedbackDialog(opts: DialogOpts): void {
   const req = $('fb-req');
   const saveBtn = $<HTMLButtonElement>('fb-save');
 
-  $('fb-title').textContent = opts.mode === 'create' ? 'Add feedback' : 'Edit feedback';
   const anchor = opts.mode === 'create' ? opts.anchor : opts.item.anchor;
+  $('fb-title').textContent = opts.mode === 'edit' ? 'Edit feedback' : anchor ? 'Add feedback' : 'Add document feedback';
   quote.hidden = !anchor;
   quote.textContent = anchor ? anchor.quote.replace(/￼/g, '[diagram]') : '';
   err.hidden = true;
@@ -193,10 +193,13 @@ export function openFeedbackDialog(opts: DialogOpts): void {
         reviewerId = pr.data.participant.id;
       }
       if (opts.mode === 'create') {
-        const r = await api('POST', '/api/feedback', { scope: 'range', status: s, comment: comment.value, reviewerId, anchor: opts.anchor });
+        const a = opts.anchor;
+        const r = await api('POST', '/api/feedback', a
+          ? { scope: 'range', status: s, comment: comment.value, reviewerId, anchor: a }
+          : { scope: 'document', status: s, comment: comment.value, reviewerId });
         if (!r.ok) return fail(firstError(r.data));
-        store.upsert(r.data.feedback, { start: opts.anchor.start, end: opts.anchor.end });
-        window.getSelection()?.removeAllRanges();
+        store.upsert(r.data.feedback, a ? { start: a.start, end: a.end } : undefined);
+        if (a) window.getSelection()?.removeAllRanges();
       } else {
         const r = await api('PATCH', `/api/feedback/${opts.item.id}`, { status: s, comment: comment.value, reviewerId });
         if (!r.ok) return fail(firstError(r.data));

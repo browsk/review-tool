@@ -16,10 +16,17 @@ export function copyDoc(name: string, content?: string): string {
   return dest;
 }
 
+/** Submit the load form and wait for the NEW document (the start page may still show the previous one). */
+export async function submitLoad(page: Page, file: string): Promise<void> {
+  await page.fill('#path-input', file);
+  await page.evaluate(() => ((window as any).__stale = true)); // a new document will not have this flag
+  await page.click('form[action="/load/local"] >> text=Load');
+  await page.waitForFunction(() => !(window as any).__stale);
+}
+
 export async function loadPath(page: Page, file: string): Promise<void> {
   await page.goto('/');
-  await page.fill('#path-input', file);
-  await page.click('form[action="/load/local"] >> text=Load');
+  await submitLoad(page, file);
   await expect(page.locator('#doc')).toBeVisible();
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   if (await page.locator('#btn-participants').count()) await expect(page.locator('html')).toHaveAttribute('data-feedback-ready', '1');
@@ -34,6 +41,11 @@ export async function loadCopy(page: Page, name: string): Promise<string> {
 export async function reload(page: Page): Promise<void> {
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-feedback-ready', '1');
+}
+
+/** Wait for two animation frames so rAF-scheduled UI updates (selection handling, layout) have run. */
+export function settle(page: Page): Promise<void> {
+  return page.evaluate(() => new Promise<void>((res) => requestAnimationFrame(() => requestAnimationFrame(() => res()))));
 }
 
 /** Create participants through the JSON API (fast path); the UI path is covered separately. */

@@ -76,13 +76,13 @@ export function openDb(dataDir: string, file = 'review.db'): DB {
   return db;
 }
 
-/** ISO 8601 with the local timezone offset, e.g. 2026-11-18T15:47:35+10:00 */
+/** ISO 8601 with milliseconds and the local timezone offset, e.g. 2026-11-18T15:47:35.123+10:00 */
 export function nowIso(d = new Date()): string {
   const pad = (n: number, w = 2) => String(Math.abs(n)).padStart(w, '0');
   const off = -d.getTimezoneOffset();
   const sign = off >= 0 ? '+' : '-';
   return (
-    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}` +
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}` +
     `${sign}${pad(Math.floor(Math.abs(off) / 60))}:${pad(Math.abs(off) % 60)}`
   );
 }

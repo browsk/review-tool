@@ -162,6 +162,20 @@ button.icon { font: inherit; background: none; border: 0; color: var(--muted); f
   font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.2rem 0.5rem;
 }
 .fb-filters { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.8rem; }
+.fb-toolbar { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.7rem; }
+.btn, .fb-toolbar button, button.primary { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.2rem 0.6rem; cursor: pointer; text-decoration: none; display: inline-block; }
+button.primary { background: var(--link); color: var(--bg); border-color: var(--link); margin-bottom: 0.7rem; }
+.app-header button.summary { display: inline-flex; gap: 0.5rem; padding: 0.2rem 0.5rem; }
+.sum { display: inline-flex; align-items: center; gap: 0.15rem; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.sum-glyph { font-size: 0.75rem; }
+.sum-reject .sum-glyph { color: var(--hl-reject-line); }
+.sum-cond .sum-glyph { color: var(--hl-cond-line); }
+.sum-accept .sum-glyph { color: var(--hl-accept-line); }
+.imp-list { margin: 0.3rem 0; padding-left: 1.2rem; max-height: 12rem; overflow: auto; font-size: 0.85rem; }
+.imp-errors summary { cursor: pointer; }
+.imp-mode label.radio { align-items: baseline; }
+.imp-summary p { margin: 0.2rem 0; }
+.ppl-role-select { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.05rem 0.3rem; }
 .ppl { list-style: none; margin: 0; padding: 0; }
 .ppl li { display: flex; gap: 0.5rem; align-items: baseline; padding: 0.3rem 0; border-bottom: 1px solid var(--border); }
 .ppl-name { font-weight: 600; }

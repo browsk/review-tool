@@ -21,7 +21,7 @@ Updated at the end of each milestone. "U" = Vitest (`test/unit`), "E" = Playwrig
 | FR5 author-count warning | M3 | E m3 "add manually, import a CSV..." |
 | FR6 statuses, comment rules, edit, delete with confirmation | M3 | U api (validation); E m3 "empty comment...", "edit and delete..." |
 | FR6 reviewer defaults to last reviewer | M3 | E m3 "reviewer defaults..."; U api (lastReviewerId) |
-| FR7 whole-document feedback UI, summary | M4 | pending (API tested in M3: U api) |
+| FR7 whole-document feedback form, panel (date sort, status/reviewer filters), summary counts near the indicator | M4 | E m4 "whole-document feedback" (2 tests); U api |
 | FR8 select text, floating button, quoted form | M3 | E m3 "select text in a section...", "a real mouse drag..." |
 | FR8 one-section limit + message naming both sections; dismiss on next click | M3 | U sectionrules; E m3 "a selection across two sections..." |
 | FR8 collapsed / whitespace-only / chrome selections ignored | M3 | E m3 "collapsed, whitespace-only and chrome..." |
@@ -31,8 +31,8 @@ Updated at the end of each milestone. "U" = Vitest (`test/unit`), "E" = Playwrig
 | FR9 highlights: tint + underline per status, AA contrast both themes, margin marker with count | M3 | U palette; E m3 pixel tests (light and dark); E m3 overlap test |
 | FR9 overlap deepens; most severe wins; click lists every item | M3 | U layers; E m3 overlap + pixel tests; E xbrowser |
 | FR9 tooltip, panel item emphasises range, hide toggle, All feedback panel with filters/sort | M3 | E m3 (tooltip, flash, toggle, filters) |
-| FR10 CSV export | M4 | pending |
-| FR11 CSV import (validation, merge/replace, backup, report) | M4 | pending |
+| FR10 one CSV: BOM, RFC 4180, column order, empty range columns for document rows, filename, exact round-trip of commas/quotes/newlines/non-ASCII | M4 | U csv (export, round-trip, property-style); U api (export endpoint); E m4 "CSV export" |
+| FR11 import: confirmation dialog (counts, Replace/Merge, hash warning), merge duplicates, new reviewers, per-row validation + report, all-invalid imports nothing, Replace backup, re-anchoring + orphans | M4 | U csv (every rule); U api (preview/commit, backup, conflicts, atomic abort); E m4 "CSV import" (7 tests) |
 | FR12 PageUp/PageDown/Home/End, Ctrl/Alt+Up/Down, buttons, breadcrumb | M2 | U navlogic; E m2 |
 | FR12 shortcuts do not fire while typing | M2, M3 | U navlogic; E m2 (path input); E m3 (comment box) |
 | FR13 themes follow OS + toggle persists; zoom persists; reading width; reduced motion | M1, M2 | E m1 (theme); E m2 (zoom, width, reduced motion) |
@@ -40,6 +40,8 @@ Updated at the end of each milestone. "U" = Vitest (`test/unit`), "E" = Playwrig
 | FR14 changed hash: warn, re-anchor, resume session | M3 | U api; E m3 re-anchoring |
 | NFR localhost binding, Host/Origin/token checks, CSP | M1 | U app; E m1 |
 | NFR no external requests | M1+ | E global fixture (every spec); xbrowser/perf use the same origin only |
-| NFR CSV injection guard | M4 | pending |
+| NFR CSV injection guard (all text cells; lossless strip on import) | M4 | U csv (each leading character, double prefix, all text columns, randomised round-trip); E m4 export test |
 | NFR 2,000 lines + 200 items under 1 s | M3 (early), M5 (final) | P perf |
-| Deliverables: README, CSV_FORMAT.md, examples | M4, M5 | pending |
+| Deliverable docs/CSV_FORMAT.md + example file | M4 | U example-csv (keeps the documented example valid and the documented messages accurate) |
+| Deliverables: README, sample arc42 + participants under examples/ | M5 | pending |
+| Participant role changed in place; friendly author warning | M4 | E m4 "participants: roles and author warning"; U api |
