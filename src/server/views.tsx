@@ -6,6 +6,7 @@ import type { CurrentDoc } from './app.js';
 export function Page(props: { token: string; doc: CurrentDoc | null; navMaxLevel: number; sectionLevel: number; children?: Child }) {
   const diags = props.doc?.diagnostics ?? [];
   const hasDoc = !!props.doc?.html;
+  const reviewable = hasDoc && !!props.doc?.sessionId;
   const ind = props.doc ? indicatorFor(diags) : 'none';
   return (
     <html lang="en">
@@ -48,6 +49,19 @@ export function Page(props: { token: string; doc: CurrentDoc | null; navMaxLevel
               </span>
             </>
           ) : null}
+          {reviewable ? (
+            <>
+              <button type="button" id="btn-hl" aria-pressed="true" title="Show or hide feedback highlights">
+                Highlights
+              </button>
+              <button type="button" id="btn-all-feedback" title="All feedback">
+                Feedback <span id="all-count" class="count">0</span>
+              </button>
+              <button type="button" id="btn-participants" title="Participants">
+                Participants
+              </button>
+            </>
+          ) : null}
           <button
             type="button"
             id="diag-indicator"
@@ -68,8 +82,78 @@ export function Page(props: { token: string; doc: CurrentDoc | null; navMaxLevel
           <DiagnosticsPanel diagnostics={diags} />
         </aside>
         <main>{props.children}</main>
+        {reviewable ? <FeedbackChrome /> : null}
       </body>
     </html>
+  );
+}
+
+/** Static shells populated by client/*.ts: selection UI, tooltip, side panel, dialogs. */
+function FeedbackChrome() {
+  return (
+    <>
+      <div id="sel-ui" class="sel-ui" hidden>
+        <button type="button" id="sel-add" hidden>
+          Add feedback
+        </button>
+        <div id="sel-msg" class="sel-msg" role="status" hidden></div>
+      </div>
+      <div id="hl-tooltip" class="hl-tooltip" role="tooltip" hidden></div>
+      <aside id="side-panel" class="panel" aria-label="Feedback" hidden></aside>
+      <dialog id="fb-dialog" aria-labelledby="fb-title">
+        <form id="fb-form" novalidate>
+          <h2 id="fb-title">Add feedback</h2>
+          <blockquote id="fb-quote" class="fb-quote" hidden></blockquote>
+          <label>
+            Reviewer
+            <select id="fb-reviewer"></select>
+          </label>
+          <div id="fb-newreviewer" class="newrev" hidden>
+            <input id="fb-newname" placeholder="New participant name" aria-label="New participant name" autocomplete="off" />
+            <select id="fb-newrole" aria-label="New participant role">
+              <option value="reviewer">reviewer</option>
+              <option value="author">author</option>
+            </select>
+          </div>
+          <fieldset>
+            <legend>Status</legend>
+            <label class="radio">
+              <input type="radio" name="status" value="Reject" /> Reject
+            </label>
+            <label class="radio">
+              <input type="radio" name="status" value="Accept with conditions" /> Accept with conditions
+            </label>
+            <label class="radio">
+              <input type="radio" name="status" value="Accept" /> Accept
+            </label>
+          </fieldset>
+          <label>
+            Comment <span id="fb-req" class="hint">(optional)</span>
+            <textarea id="fb-comment" rows={4} maxlength={20000}></textarea>
+          </label>
+          <p id="fb-error" class="error" role="alert" hidden></p>
+          <div class="actions">
+            <button type="button" id="fb-cancel">
+              Cancel
+            </button>
+            <button type="submit" id="fb-save">
+              Save
+            </button>
+          </div>
+        </form>
+      </dialog>
+      <dialog id="confirm-dialog" aria-labelledby="confirm-text">
+        <p id="confirm-text"></p>
+        <div class="actions">
+          <button type="button" id="confirm-no">
+            Cancel
+          </button>
+          <button type="button" id="confirm-yes">
+            Delete
+          </button>
+        </div>
+      </dialog>
+    </>
   );
 }
 
@@ -122,6 +206,8 @@ export function DocumentView(props: { doc: CurrentDoc; navMaxLevel: number; sect
         </details>
       ) : null}
       {doc.html ? (
+        <div class="doc-wrap">
+          <div id="margin-layer" class="margin-layer"></div>
         <article
           id="doc"
           class="doc"
@@ -131,6 +217,7 @@ export function DocumentView(props: { doc: CurrentDoc; navMaxLevel: number; sect
         >
           {raw(doc.html)}
         </article>
+        </div>
       ) : (
         <p class="empty">The document could not be read. See diagnostics.</p>
       )}

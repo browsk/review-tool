@@ -9,6 +9,9 @@ import type { Section } from '../render/sections.js';
 import { indicatorFor, type Diagnostic } from '../render/diagnostics.js';
 import { IMAGE_MIME, LoadError, PathError, ReadFailure, assetExists, loadLocalDocument, resolveSafe } from '../sources/local.js';
 import { addRecent, readRecent } from '../sources/recent.js';
+import { openDb } from '../db/db.js';
+import { createRepos } from '../db/repos.js';
+import { registerApi } from './api.js';
 import { Page, StartForm, DocumentView, DiagnosticsPanel } from './views.js';
 
 export interface CurrentDoc {
@@ -19,6 +22,8 @@ export interface CurrentDoc {
   frontmatter?: string;
   diagnostics: Diagnostic[];
   sections: Section[];
+  /** review session (feedback + participants) for this document; null when it could not be read */
+  sessionId: string | null;
 }
 
 export interface AppState {
@@ -43,6 +48,7 @@ const PUBLIC_DIR = path.resolve(process.cwd(), 'public');
 export function createApp(config: Config) {
   const state: AppState = { doc: null, token: randomBytes(24).toString('hex') };
   const app = new Hono();
+  const repos = createRepos(openDb(config.dataDir));
 
   const allowedHosts = new Set([`127.0.0.1:${config.port}`, `localhost:${config.port}`, `[::1]:${config.port}`]);
 
@@ -83,6 +89,8 @@ export function createApp(config: Config) {
     c.res.headers.set('Cache-Control', 'no-store');
   });
 
+  registerApi(app, { repos, state });
+
   const page = (c: Context, opts: { error?: string; status?: 200 | 400 } = {}) =>
     c.html(
       <Page token={state.token} doc={state.doc} navMaxLevel={config.navMaxLevel} sectionLevel={config.sectionLevel}>
@@ -103,14 +111,24 @@ export function createApp(config: Config) {
         assetExists: (rel) => assetExists(doc.dir, rel),
         sectionLevel: config.sectionLevel,
       });
+      const s = repos.getOrCreateSession(`local:${doc.path}`, doc.name, doc.sha256);
+      const diagnostics = [...r.diagnostics];
+      if (s.hashChanged) {
+        diagnostics.push({
+          severity: 'warning',
+          code: 'hash-changed',
+          message: 'This document has changed since it was last reviewed. Existing feedback is being re-anchored to the new text.',
+        });
+      }
       state.doc = {
         name: doc.name,
         dir: doc.dir,
         sha256: doc.sha256,
         html: r.html,
         frontmatter: r.frontmatter,
-        diagnostics: r.diagnostics,
+        diagnostics,
         sections: r.sections,
+        sessionId: s.session.id,
       };
       addRecent(config.dataDir, doc.path);
       return page(c);
@@ -123,6 +141,7 @@ export function createApp(config: Config) {
           html: '',
           diagnostics: [{ severity: 'error', code: 'read-failure', message: err.message }],
           sections: [],
+          sessionId: null,
         };
         return page(c);
       }

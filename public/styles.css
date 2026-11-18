@@ -10,18 +10,27 @@
   --err: #c62828;
   --code-bg: #f3f4f6;
   --doc-size: 1;
+  --hl-reject-bg: rgba(211, 47, 47, 0.16); --hl-reject-line: #c62828;
+  --hl-cond-bg: rgba(245, 124, 0, 0.18); --hl-cond-line: #b26a00;
+  --hl-accept-bg: rgba(46, 125, 50, 0.16); --hl-accept-line: #2e7d32;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     --bg: #14161a; --fg: #e6e8eb; --muted: #9aa0a6; --border: #2f343b; --panel: #1c1f24;
     --link: #8ab4f8; --ok: #66bb6a; --warn: #ffb74d; --err: #ef5350; --code-bg: #1f2329;
+    --hl-reject-bg: rgba(198, 40, 40, 0.22); --hl-reject-line: #ef5350;
+    --hl-cond-bg: rgba(178, 106, 0, 0.22); --hl-cond-line: #ffb74d;
+    --hl-accept-bg: rgba(46, 125, 50, 0.22); --hl-accept-line: #66bb6a;
     color-scheme: dark;
   }
 }
 :root[data-theme='dark'] {
   --bg: #14161a; --fg: #e6e8eb; --muted: #9aa0a6; --border: #2f343b; --panel: #1c1f24;
   --link: #8ab4f8; --ok: #66bb6a; --warn: #ffb74d; --err: #ef5350; --code-bg: #1f2329;
+  --hl-reject-bg: rgba(198, 40, 40, 0.22); --hl-reject-line: #ef5350;
+  --hl-cond-bg: rgba(178, 106, 0, 0.22); --hl-cond-line: #ffb74d;
+  --hl-accept-bg: rgba(46, 125, 50, 0.22); --hl-accept-line: #66bb6a;
   color-scheme: dark;
 }
 
@@ -42,7 +51,10 @@ a { color: var(--link); }
   background: var(--panel);
   border-bottom: 1px solid var(--border);
 }
-.app-header .spacer { flex: 1; }
+.app-header { flex-wrap: nowrap; white-space: nowrap; }
+.app-header > * { flex: none; }
+.app-header .spacer { flex: 0 0 0; }
+@media (max-width: 1000px) { .app-header { flex-wrap: wrap; } }
 .doc-title { font-weight: 600; }
 .app-header button, .start button {
   font: inherit; color: var(--fg); background: var(--bg);
@@ -101,12 +113,82 @@ main { padding: 1rem; }
 :root[data-theme='dark'] .shiki, :root[data-theme='dark'] .shiki span { color: var(--shiki-dark); }
 :root[data-theme='dark'] .shiki { background-color: var(--shiki-dark-bg); }
 
+/* ---- feedback highlights (CSS Custom Highlight API). Tints are translucent so overlaps deepen;
+   priority (set in JS) makes the most severe status win the underline. */
+::highlight(rt-reject-0), ::highlight(rt-reject-1), ::highlight(rt-reject-2), ::highlight(rt-reject-3), ::highlight(rt-reject-4) { background-color: var(--hl-reject-bg); text-decoration: underline; text-decoration-color: var(--hl-reject-line); text-decoration-thickness: 2px; }
+::highlight(rt-cond-0), ::highlight(rt-cond-1), ::highlight(rt-cond-2), ::highlight(rt-cond-3), ::highlight(rt-cond-4) { background-color: var(--hl-cond-bg); text-decoration: underline; text-decoration-color: var(--hl-cond-line); text-decoration-thickness: 2px; }
+::highlight(rt-accept-0), ::highlight(rt-accept-1), ::highlight(rt-accept-2), ::highlight(rt-accept-3), ::highlight(rt-accept-4) { background-color: var(--hl-accept-bg); text-decoration: underline; text-decoration-color: var(--hl-accept-line); text-decoration-thickness: 2px; }
+::highlight(rt-flash) { background-color: #ffd54f; color: #1a1a1a; }
+.doc.over-feedback { cursor: pointer; }
+.doc-wrap { position: relative; }
+.margin-layer { position: absolute; inset: 0; pointer-events: none; }
+.hl-hidden .margin-layer { display: none; }
+.marker {
+  position: absolute; pointer-events: auto; display: inline-flex; align-items: center; gap: 0.15rem;
+  min-width: 2.1rem; padding: 0 0.3rem; height: 1.3rem; font: 600 0.75rem/1 system-ui, sans-serif;
+  color: var(--fg); background: var(--bg); border: 2px solid var(--muted); border-radius: 6px; cursor: pointer;
+}
+.marker.mk-reject { border-color: var(--hl-reject-line); }
+.marker.mk-cond { border-color: var(--hl-cond-line); }
+.marker.mk-accept { border-color: var(--hl-accept-line); }
+.mk-glyph { font-size: 0.7rem; }
+
+.sel-ui { position: fixed; z-index: 30; max-width: 22rem; }
+.sel-ui button { font: inherit; padding: 0.3rem 0.7rem; border-radius: 6px; border: 1px solid var(--link); background: var(--link); color: var(--bg); cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.sel-msg { padding: 0.5rem 0.7rem; background: var(--panel); color: var(--fg); border: 1px solid var(--warn); border-left-width: 4px; border-radius: 6px; font-size: 0.9rem; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.hl-tooltip { position: fixed; z-index: 30; max-width: 20rem; padding: 0.4rem 0.6rem; background: var(--panel); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; pointer-events: none; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+
+.app-header button .count { color: var(--muted); font-variant-numeric: tabular-nums; }
+.app-header button[aria-pressed='false'] { opacity: 0.6; text-decoration: line-through; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+.panel-head h2 { margin: 0; font-size: 1.05rem; }
+button.icon { font: inherit; background: none; border: 0; color: var(--muted); font-size: 1.3rem; cursor: pointer; line-height: 1; }
+.fb-list, .fb-group { display: flex; flex-direction: column; gap: 0.6rem; }
+.fb-group { margin-bottom: 1rem; }
+.fb-group h3, .panel h3 { margin: 0.8rem 0 0.3rem; font-size: 0.85rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.fb-card { padding: 0.6rem 0.7rem; background: var(--bg); border: 1px solid var(--border); border-left: 4px solid var(--muted); border-radius: 6px; }
+.fb-card.st-reject { border-left-color: var(--hl-reject-line); }
+.fb-card.st-cond { border-left-color: var(--hl-cond-line); }
+.fb-card.st-accept { border-left-color: var(--hl-accept-line); }
+.fb-card.clickable { cursor: pointer; }
+.fb-top { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: baseline; font-size: 0.85rem; }
+.badge { font-weight: 600; }
+.fb-date { color: var(--muted); margin-left: auto; }
+.fb-quote { margin: 0.4rem 0; padding: 0.2rem 0.6rem; border-left: 3px solid var(--border); color: var(--muted); font-size: 0.9rem; white-space: pre-wrap; max-height: 8rem; overflow: auto; }
+.fb-comment { margin: 0.3rem 0; white-space: pre-wrap; }
+.fb-scope { color: var(--muted); font-size: 0.85rem; margin: 0.3rem 0; }
+.fb-actions { display: flex; gap: 0.4rem; }
+.fb-actions button, .fb-filters select, .ppl-add button, .ppl-add input, .ppl-add select, dialog button, dialog select, dialog input[type='text'], dialog input:not([type]), dialog textarea {
+  font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.2rem 0.5rem;
+}
+.fb-filters { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.8rem; }
+.ppl { list-style: none; margin: 0; padding: 0; }
+.ppl li { display: flex; gap: 0.5rem; align-items: baseline; padding: 0.3rem 0; border-bottom: 1px solid var(--border); }
+.ppl-name { font-weight: 600; }
+.ppl-role, .ppl-email, .hint { color: var(--muted); font-size: 0.85rem; }
+.ppl li .icon { margin-left: auto; }
+.ppl-add { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.warn { color: var(--warn); }
+.panel .error { color: var(--err); }
+
+dialog { max-width: min(34rem, 94vw); width: 100%; padding: 1rem 1.2rem; color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 10px; }
+dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
+dialog h2 { margin-top: 0; font-size: 1.1rem; }
+dialog label { display: flex; flex-direction: column; gap: 0.2rem; margin: 0.6rem 0; }
+dialog label.radio { flex-direction: row; align-items: center; gap: 0.4rem; margin: 0.2rem 0; }
+dialog fieldset { border: 1px solid var(--border); border-radius: 6px; margin: 0.6rem 0; }
+dialog .newrev { display: flex; gap: 0.4rem; }
+dialog .actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.8rem; }
+dialog .error { color: var(--err); }
+dialog textarea { width: 100%; resize: vertical; }
+
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .doc :is(h1, h2, h3, h4, h5, h6) { scroll-margin-top: var(--header-h, 3rem); }
 .group { display: inline-flex; align-items: center; gap: 0.3rem; }
 .group output { min-width: 3rem; text-align: center; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 0.85rem; }
 .app-header button:disabled { opacity: 0.4; cursor: default; }
-.breadcrumb { display: flex; align-items: center; gap: 0.4rem; min-width: 0; flex: 0 1 auto; overflow: hidden; white-space: nowrap; color: var(--muted); font-size: 0.9rem; }
+.app-header > .breadcrumb { flex: 1 1 0; }
+.breadcrumb { display: flex; align-items: center; gap: 0.4rem; min-width: 0; overflow: hidden; white-space: nowrap; color: var(--muted); font-size: 0.9rem; }
 .breadcrumb .crumb { overflow: hidden; text-overflow: ellipsis; }
 .breadcrumb .crumb[aria-current] { color: var(--fg); font-weight: 600; }
 .app-header:has(.breadcrumb) .doc-title { flex: none; }

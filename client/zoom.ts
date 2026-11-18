@@ -21,6 +21,7 @@ export function initZoom(): void {
     if (label) label.textContent = `${pct}%`;
     if (out) out.disabled = pct <= ZOOM_MIN;
     if (inn) inn.disabled = pct >= ZOOM_MAX;
+    document.dispatchEvent(new CustomEvent('rt:layout'));
   };
   const set = (v: number) => {
     pct = clampZoom(v);

@@ -11,13 +11,16 @@
     "start": "npm run build && tsx src/server/index.ts",
     "dev": "node esbuild.config.mjs --watch & tsx watch src/server/index.ts",
     "test": "vitest run",
-    "test:e2e": "playwright test",
-    "test:perf": "vitest run --config vitest.perf.config.ts",
+    "test:e2e": "playwright test --project=chromium --project=firefox --project=webkit",
+    "test:perf": "playwright test --project=perf",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.9",
     "@terrastruct/d2": "0.1.33",
+    "better-sqlite3": "^13.2.0",
+    "csv-parse": "^7.0.3",
+    "csv-stringify": "^6.9.0",
     "hono": "^4.13.19",
     "mdast-util-to-string": "^4.0.0",
     "rehype-raw": "^7.0.0",
@@ -33,6 +36,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.65.1",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/hast": "^3.0.5",
     "@types/mdast": "^4.0.4",
     "@types/node": "^26.6.6",

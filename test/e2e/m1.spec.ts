@@ -64,12 +64,14 @@ for (const scheme of ['light', 'dark'] as const) {
   test(`follows OS ${scheme} preference and toggle persists across reload`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });
     await load(page, 'arc42-good.md');
+    await expect(page.locator('#doc')).toBeVisible();
     const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-    expect(await bg()).toBe(scheme === 'dark' ? 'rgb(20, 22, 26)' : 'rgb(255, 255, 255)');
+    await expect.poll(bg).toBe(scheme === 'dark' ? 'rgb(20, 22, 26)' : 'rgb(255, 255, 255)');
     await page.click('#theme-toggle');
     const flipped = scheme === 'dark' ? 'rgb(255, 255, 255)' : 'rgb(20, 22, 26)';
-    expect(await bg()).toBe(flipped);
+    await expect.poll(bg).toBe(flipped);
     await page.reload();
-    expect(await bg()).toBe(flipped);
+    await expect(page.locator('#doc')).toBeVisible();
+    await expect.poll(bg).toBe(flipped);
   });
 }

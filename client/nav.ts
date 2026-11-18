@@ -65,6 +65,7 @@ export function initNavigation(): void {
   }
 
   document.addEventListener('keydown', (e) => {
+    if (document.querySelector('dialog[open]')) return; // modal dialogs own the keyboard
     const a = actionFor(e, e.target);
     if (!a) return;
     e.preventDefault();
