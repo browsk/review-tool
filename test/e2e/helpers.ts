@@ -17,7 +17,12 @@ export function copyDoc(name: string, content?: string): string {
 }
 
 /** Submit the load form and wait for the NEW document (the start page may still show the previous one). */
+export async function openLoader(page: Page): Promise<void> {
+  await page.evaluate(() => document.getElementById('open-doc')?.setAttribute('open', ''));
+}
+
 export async function submitLoad(page: Page, file: string): Promise<void> {
+  await openLoader(page);
   await page.fill('#path-input', file);
   await page.evaluate(() => ((window as any).__stale = true)); // a new document will not have this flag
   await page.click('form[action="/load/local"] >> text=Load');

@@ -51,7 +51,15 @@ Updated at the end of each milestone. "U" = Vitest (`test/unit`), "E" = Playwrig
 | NFR localhost binding, Host/Origin/token checks, CSP | M1 | U app; E m1 |
 | NFR no external requests | M1+ | E global fixture (every spec); xbrowser/perf use the same origin only |
 | NFR CSV injection guard (all text cells; lossless strip on import) | M4 | U csv (each leading character, double prefix, all text columns, randomised round-trip); E m4 export test |
-| NFR 2,000 lines + 200 items under 1 s | M3 (early), M5 (final) | P perf |
+| NFR 2,000 lines + 200 items under 1 s (measured: page ready ~400 ms, client init ~120 ms) | M3 (early), M5 (final) | P perf (
+pm run test:perf) |
 | Deliverable docs/CSV_FORMAT.md + example file | M4 | U example-csv (keeps the documented example valid and the documented messages accurate) |
-| Deliverables: README, sample arc42 + participants under examples/ | M5 | pending |
+| Deliverables: README (install, run, configuration, browsers, shortcuts, CSV), sample arc42 with Mermaid and D2, participant files, example CSV | M5 | U examples (sample renders warning-free with diagrams; participant files valid; large sample valid) |
+| 
+pm start, 
+pm run dev (live reload verified), 
+pm test, 
+pm run test:e2e, 
+pm run test:perf | M1-M5 | scripts in package.json |
+| Loaders collapse once a document is displayed (more screen for the document) | M5 | E m1 |
 | Participant role changed in place; friendly author warning | M4 | E m4 "participants: roles and author warning"; U api |

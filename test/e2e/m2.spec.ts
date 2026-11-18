@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { test, expect } from './fixtures.js';
-import { submitLoad } from './helpers.js';
+import { openLoader, submitLoad } from './helpers.js';
 import type { Page } from '@playwright/test';
 
 const fx = (n: string) => path.resolve('test/fixtures', n);
@@ -83,6 +83,7 @@ test.describe('keyboard navigation', () => {
 
   test('shortcuts do not fire while typing in an input', async ({ page }) => {
     await load(page);
+    await openLoader(page);
     await page.focus('#path-input');
     for (const k of ['PageDown', 'End', 'Control+ArrowDown', 'Alt+ArrowDown']) {
       await page.keyboard.press(k);

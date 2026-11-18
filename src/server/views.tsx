@@ -181,8 +181,12 @@ export function StartForm(props: {
   error?: string;
   patSource: 'env' | 'session' | null;
   adoPicker?: { url: string; files: string[]; title?: string };
+  /** a document is already displayed: tuck the loaders away so the document gets the screen */
+  collapsed?: boolean;
 }) {
   return (
+    <details class="open-doc" id="open-doc" open={!props.collapsed}>
+    <summary>{props.collapsed ? 'Open another document' : 'Open a document'}</summary>
     <section class="start" id="start-form">
       <form method="post" action="/load/local">
         <input type="hidden" name="_token" value={props.token} />
@@ -256,6 +260,7 @@ export function StartForm(props: {
         </details>
       ) : null}
     </section>
+    </details>
   );
 }
 

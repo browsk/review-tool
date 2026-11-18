@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { test, expect } from './fixtures.js';
-import { submitLoad } from './helpers.js';
+import { openLoader, submitLoad } from './helpers.js';
 
 const fx = (n: string) => path.resolve('test/fixtures', n);
 
@@ -31,6 +31,7 @@ test('warnings give an orange indicator, a panel listing issues, and missing ima
 
 test('missing path shows an error and keeps the previous document', async ({ page }) => {
   await load(page, 'arc42-good.md');
+  await openLoader(page);
   await page.fill('#path-input', fx('does-not-exist.md'));
   await page.click('form[action="/load/local"] >> text=Load');
   await expect(page.locator('#load-error')).toContainText('File not found');
@@ -75,3 +76,26 @@ for (const scheme of ['light', 'dark'] as const) {
     await expect.poll(bg).toBe(flipped);
   });
 }
+
+test('the loaders are tucked away once a document is displayed, and reopen on demand or on an error', async ({ page }) => {
+  await load(page, 'arc42-good.md');
+  await expect(page.locator('#doc')).toBeVisible();
+  await expect(page.locator('#open-doc')).not.toHaveAttribute('open', '');
+  await expect(page.locator('#path-input')).toBeHidden();
+  await expect(page.locator('#open-doc > summary')).toHaveText('Open another document');
+  // the document starts near the top of the screen instead of below two forms
+  const docTop = await page.locator('#doc').evaluate((e) => e.getBoundingClientRect().top);
+  expect(docTop).toBeLessThan(250);
+
+  await page.click('#open-doc > summary');
+  await expect(page.locator('#path-input')).toBeVisible();
+  await expect(page.locator('#ado-url')).toBeVisible();
+
+  // an error reopens the loaders so the message and the form are in view
+  await page.fill('#path-input', fx('does-not-exist.md'));
+  await page.evaluate(() => ((window as any).__stale = true));
+  await page.click('form[action="/load/local"] >> text=Load');
+  await page.waitForFunction(() => !(window as any).__stale);
+  await expect(page.locator('#load-error')).toBeVisible();
+  await expect(page.locator('#path-input')).toBeVisible();
+});

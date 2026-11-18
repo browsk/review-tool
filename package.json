@@ -9,7 +9,7 @@
   "scripts": {
     "build": "node esbuild.config.mjs",
     "start": "npm run build && tsx src/server/index.ts",
-    "dev": "node esbuild.config.mjs --watch & tsx watch src/server/index.ts",
+    "dev": "concurrently -k -n build,server -c blue,green \"node esbuild.config.mjs --watch\" \"node --watch --import tsx src/server/index.ts\"",
     "test": "vitest run",
     "test:e2e": "playwright test --project=chromium --project=firefox --project=webkit",
     "test:perf": "playwright test --project=perf",
@@ -44,6 +44,7 @@
     "@types/jsdom": "^30.0.0",
     "@types/mdast": "^4.0.4",
     "@types/node": "^26.6.6",
+    "concurrently": "^10.0.7",
     "esbuild": "^0.28.2",
     "happy-dom": "^21.0.4",
     "tsx": "^4.23.15",

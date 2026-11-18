@@ -107,6 +107,7 @@ export function createApp(config: Config) {
           error={opts.error}
           patSource={state.adoPat ? 'session' : config.adoPat ? 'env' : null}
           adoPicker={opts.ado}
+          collapsed={!!state.doc?.html && !opts.error && !opts.ado}
         />
         {state.doc ? <DocumentView doc={state.doc} navMaxLevel={config.navMaxLevel} sectionLevel={config.sectionLevel} /> : <p class="empty">No document loaded.</p>}
       </Page>,

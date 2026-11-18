@@ -249,3 +249,8 @@ dialog textarea { width: 100%; resize: vertical; }
 .diagram-dialog svg { width: 100%; height: auto; }
 :root[data-theme='dark'] .diagram-dialog { background: var(--bg); }
 @media (prefers-reduced-motion: reduce) { .diagram-toolbar { transition: none; } }
+
+/* the loaders collapse once a document is displayed, so the document gets the screen */
+.open-doc { max-width: 60rem; margin: 0 auto 0.6rem; }
+.open-doc > summary { cursor: pointer; color: var(--muted); font-size: 0.9rem; padding: 0.2rem 0; }
+.open-doc[open] > summary { margin-bottom: 0.4rem; }

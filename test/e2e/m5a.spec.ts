@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { test, expect } from './fixtures.js';
 import type { Page } from '@playwright/test';
-import { addFeedbackViaDialog, reload, seedParticipants, selectText } from './helpers.js';
+import { addFeedbackViaDialog, openLoader, reload, seedParticipants, selectText } from './helpers.js';
 
 const PAT = 'test-pat-123';
 const MOCK = 'http://127.0.0.1:4174';
@@ -11,6 +11,7 @@ const dataDir = () => process.env.RT_E2E_DATA_DIR!;
 
 async function loadPr(page: Page, id: number | string, pat: string | null = PAT) {
   await page.goto('/');
+  await openLoader(page);
   await page.fill('#ado-url', typeof id === 'number' ? prUrl(id) : id);
   if (pat !== null) await page.fill('#ado-pat', pat);
   await page.evaluate(() => ((window as any).__stale = true));
@@ -68,6 +69,7 @@ test.describe('Azure DevOps pull requests (mocked API)', () => {
   test('a pull request that adds no markdown shows a clear message and keeps the previous document', async ({ page }) => {
     await loadPr(page, 101);
     await expect(page.locator('#doc')).toContainText('Introduction and Goals');
+    await openLoader(page);
     await page.fill('#ado-url', prUrl(103));
     await page.evaluate(() => ((window as any).__stale = true));
     await page.click('#ado-form button[type=submit]');
