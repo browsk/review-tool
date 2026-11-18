@@ -41,7 +41,7 @@ export function exportCsv(rows: FeedbackRow[], docName: string, docSha: string):
     ];
   });
   // UTF-8 BOM for Excel; RFC 4180 quoting and CRLF record delimiters
-  return `﻿${stringify(records, { header: true, columns: [...COLUMNS], record_delimiter: 'windows' })}`;
+  return `﻿${stringify(records, { header: true, columns: [...COLUMNS], record_delimiter: 'windows', quoted_match: /[\r\n]/ })}`;
 }
 
 export function exportFilename(docName: string, now = new Date()): string {

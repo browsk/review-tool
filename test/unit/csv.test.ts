@@ -38,6 +38,14 @@ describe('CSV export', () => {
     expect(csv.endsWith('\r\n')).toBe(true);
   });
 
+  it('quotes every field containing a line break (a bare LF must not be left unquoted for Excel)', () => {
+    const csv = exportCsv([fb(1, { comment: 'a\nb', anchor: { start: 1, end: 9, quote: 'x\ny', prefix: 'p\rq', suffix: 's\r\nt', sectionHeading: 'H', kind: 'text' } })], 'd', SHA);
+    expect(csv).toContain('"a\nb"');
+    expect(csv).toContain('"x\ny"');
+    expect(csv).toContain('"p\rq"');
+    expect(csv).toContain('"s\r\nt"');
+  });
+
   it('leaves range-only columns empty for document rows', () => {
     const csv = exportCsv([fb(1, { scope: 'document', anchor: null, status: 'Accept', comment: '' })], 'd', SHA);
     const [rec] = parse(csv, { columns: true, bom: true }) as Record<string, string>[];
