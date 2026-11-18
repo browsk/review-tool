@@ -4,7 +4,8 @@ import { randomBytes } from 'node:crypto';
 import { Hono } from 'hono';
 import type { Context, Next } from 'hono';
 import type { Config } from './config.js';
-import { renderMarkdown } from '../render/pipeline.js';
+import { looksBinary, renderMarkdown } from '../render/pipeline.js';
+import { AdoError, createAdoClient, fetchAdoDocument, parsePrUrl } from '../sources/ado.js';
 import type { Section } from '../render/sections.js';
 import { indicatorFor, type Diagnostic } from '../render/diagnostics.js';
 import { IMAGE_MIME, LoadError, PathError, ReadFailure, assetExists, loadLocalDocument, resolveSafe } from '../sources/local.js';
@@ -24,11 +25,15 @@ export interface CurrentDoc {
   sections: Section[];
   /** review session (feedback + participants) for this document; null when it could not be read */
   sessionId: string | null;
+  /** where the document came from, for humans (file path or pull request) */
+  sourceLabel?: string;
 }
 
 export interface AppState {
   doc: CurrentDoc | null;
   token: string;
+  /** PAT typed into the UI. Held in memory only: never written to the database, logs, cache or exports. */
+  adoPat?: string;
 }
 
 export const CSP = [
@@ -83,7 +88,8 @@ export function createApp(config: Config) {
       if (token !== state.token) return c.text('Missing or invalid token', 403);
     }
     await next();
-    c.res.headers.set('Content-Security-Policy', CSP);
+    // routes may set a stricter policy of their own (e.g. sandboxed SVG assets); do not overwrite it
+    if (!c.res.headers.has('Content-Security-Policy')) c.res.headers.set('Content-Security-Policy', CSP);
     c.res.headers.set('X-Content-Type-Options', 'nosniff');
     c.res.headers.set('Referrer-Policy', 'no-referrer');
     c.res.headers.set('Cache-Control', 'no-store');
@@ -91,14 +97,52 @@ export function createApp(config: Config) {
 
   registerApi(app, { repos, state, dataDir: config.dataDir });
 
-  const page = (c: Context, opts: { error?: string; status?: 200 | 400 } = {}) =>
+  const page = (c: Context, opts: { error?: string; status?: 200 | 400 | 401 | 403 | 404 | 422 | 502; ado?: { url: string; files: string[]; title?: string } } = {}) =>
     c.html(
       <Page token={state.token} doc={state.doc} navMaxLevel={config.navMaxLevel} sectionLevel={config.sectionLevel}>
-        <StartForm token={state.token} recent={readRecent(config.dataDir)} error={opts.error} />
+        <StartForm
+          token={state.token}
+          recent={readRecent(config.dataDir)}
+          error={opts.error}
+          patSource={state.adoPat ? 'session' : config.adoPat ? 'env' : null}
+          adoPicker={opts.ado}
+        />
         {state.doc ? <DocumentView doc={state.doc} navMaxLevel={config.navMaxLevel} sectionLevel={config.sectionLevel} /> : <p class="empty">No document loaded.</p>}
       </Page>,
       opts.status ?? 200,
     );
+
+  /** Render a document, resume or create its review session, and make it the current document. */
+  async function openDocument(a: { name: string; dir: string | null; sha256: string; source: string; sourceKey: string; label: string }): Promise<void> {
+    const r = await renderMarkdown(a.source, {
+      assetExists: (rel) => (a.dir ? assetExists(a.dir, rel) : false),
+      sectionLevel: config.sectionLevel,
+    });
+    const s = repos.getOrCreateSession(a.sourceKey, a.name, a.sha256);
+    const diagnostics = [...r.diagnostics];
+    if (s.hashChanged) {
+      diagnostics.push({
+        severity: 'warning',
+        code: 'hash-changed',
+        message: 'This document has changed since it was last reviewed. Existing feedback is being re-anchored to the new text.',
+      });
+    }
+    state.doc = {
+      name: a.name,
+      dir: a.dir,
+      sha256: a.sha256,
+      html: r.html,
+      frontmatter: r.frontmatter,
+      diagnostics,
+      sections: r.sections,
+      sessionId: s.session.id,
+      sourceLabel: a.label,
+    };
+  }
+
+  const readFailureDoc = (name: string, message: string): void => {
+    state.doc = { name, dir: null, sha256: '', html: '', diagnostics: [{ severity: 'error', code: 'read-failure', message }], sections: [], sessionId: null };
+  };
 
   app.get('/', (c) => page(c));
 
@@ -107,46 +151,55 @@ export function createApp(config: Config) {
     const input = typeof form.path === 'string' ? form.path : '';
     try {
       const doc = loadLocalDocument(input);
-      const r = await renderMarkdown(doc.source, {
-        assetExists: (rel) => assetExists(doc.dir, rel),
-        sectionLevel: config.sectionLevel,
-      });
-      const s = repos.getOrCreateSession(`local:${doc.path}`, doc.name, doc.sha256);
-      const diagnostics = [...r.diagnostics];
-      if (s.hashChanged) {
-        diagnostics.push({
-          severity: 'warning',
-          code: 'hash-changed',
-          message: 'This document has changed since it was last reviewed. Existing feedback is being re-anchored to the new text.',
-        });
-      }
-      state.doc = {
-        name: doc.name,
-        dir: doc.dir,
-        sha256: doc.sha256,
-        html: r.html,
-        frontmatter: r.frontmatter,
-        diagnostics,
-        sections: r.sections,
-        sessionId: s.session.id,
-      };
+      await openDocument({ name: doc.name, dir: doc.dir, sha256: doc.sha256, source: doc.source, sourceKey: `local:${doc.path}`, label: doc.path });
       addRecent(config.dataDir, doc.path);
       return page(c);
     } catch (err) {
       if (err instanceof ReadFailure) {
-        state.doc = {
-          name: path.basename(err.filePath),
-          dir: null,
-          sha256: '',
-          html: '',
-          diagnostics: [{ severity: 'error', code: 'read-failure', message: err.message }],
-          sections: [],
-          sessionId: null,
-        };
+        readFailureDoc(path.basename(err.filePath), err.message);
         return page(c);
       }
       if (err instanceof LoadError) return page(c, { error: err.message, status: 400 });
       return page(c, { error: 'Unexpected error loading the document.', status: 400 });
+    }
+  });
+
+  const ADO_STATUS = { url: 400, auth: 401, forbidden: 403, notfound: 404, network: 502, data: 502, limit: 400 } as const;
+
+  /** Load a markdown file added by an Azure DevOps pull request (FR2). */
+  app.post('/load/ado', async (c) => {
+    const form = await c.req.parseBody();
+    const url = typeof form.url === 'string' ? form.url : '';
+    const chosen = typeof form.file === 'string' && form.file ? form.file : undefined;
+    const entered = typeof form.pat === 'string' ? form.pat.trim() : '';
+    const pat = entered || state.adoPat || config.adoPat;
+    try {
+      const ref = parsePrUrl(url);
+      if (!pat) throw new AdoError('A personal access token is required. Enter one below or set the ADO_PAT environment variable.', 'auth');
+      const client = createAdoClient(ref, { pat, apiBase: config.adoApiBase });
+      const found = await client.listAddedMarkdown();
+      if (entered) state.adoPat = entered; // remembered (in memory only) once Azure DevOps has accepted it, e.g. for the file picker
+      if (!found.files.length) {
+        return page(c, { error: 'No new markdown (.md) files were added in this pull request. Only files that the pull request adds are reviewed.', status: 422 });
+      }
+      if (chosen && !found.files.includes(chosen)) {
+        return page(c, { error: 'That file is not one of the markdown files added by this pull request.', status: 400, ado: { url, files: found.files, title: found.title } });
+      }
+      const file = chosen ?? (found.files.length === 1 ? found.files[0] : undefined);
+      if (!file) return page(c, { ado: { url, files: found.files, title: found.title } }); // several: show the picker
+      const doc = await fetchAdoDocument(client, found.commit, file, path.join(config.dataDir, 'cache', 'ado'), looksBinary, (m) => new ReadFailure(m, file));
+      await openDocument({ name: doc.name, dir: doc.dir, sha256: doc.sha256, source: doc.source, sourceKey: doc.sourceKey, label: doc.label });
+      return page(c);
+    } catch (err) {
+      if (err instanceof ReadFailure) {
+        readFailureDoc(path.basename(err.filePath), err.message);
+        return page(c);
+      }
+      if (err instanceof AdoError) {
+        if (err.kind === 'auth' && !entered && pat === state.adoPat) state.adoPat = undefined; // forget a remembered token that stopped working
+        return page(c, { error: err.message, status: ADO_STATUS[err.kind] });
+      }
+      return page(c, { error: 'Unexpected error loading the pull request.', status: 502 });
     }
   });
 

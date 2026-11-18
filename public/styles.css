@@ -162,6 +162,14 @@ button.icon { font: inherit; background: none; border: 0; color: var(--muted); f
   font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.2rem 0.5rem;
 }
 .fb-filters { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.8rem; }
+.ado-form { margin-top: 0.7rem; }
+.ado-form input[type='password'] { font: inherit; padding: 0.3rem 0.5rem; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; }
+.ado-form input[type='text'] { width: min(36rem, 90vw); }
+.ado-form .hint { flex-basis: 100%; margin: 0; }
+.ado-picker { margin: 0.8rem 0; padding: 0.6rem 0.9rem; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; }
+.ado-picker h2 { margin: 0 0 0.3rem; font-size: 1rem; }
+.ado-picker ul { list-style: none; margin: 0; padding: 0; }
+.ado-picker li { margin: 0.2rem 0; }
 .fb-toolbar { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.7rem; }
 .btn, .fb-toolbar button, button.primary { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.2rem 0.6rem; cursor: pointer; text-decoration: none; display: inline-block; }
 button.primary { background: var(--link); color: var(--bg); border-color: var(--link); margin-bottom: 0.7rem; }

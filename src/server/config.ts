@@ -9,6 +9,10 @@ export interface Config {
   /** deepest heading level that Ctrl/Alt+Up/Down navigation stops at (1-6) */
   navMaxLevel: number;
   lan: boolean;
+  /** personal access token from the ADO_PAT environment variable (never logged, persisted or exported) */
+  adoPat?: string;
+  /** TEST HOOK: send Azure DevOps API requests to this origin instead of dev.azure.com */
+  adoApiBase?: string;
 }
 
 export function defaultDataDir(): string {
@@ -36,5 +40,7 @@ export function loadConfig(argv: string[] = process.argv.slice(2), env = process
     sectionLevel: clampLevel(env.SECTION_LEVEL, 2),
     navMaxLevel: clampLevel(env.NAV_MAX_LEVEL, 6),
     lan,
+    adoPat: env.ADO_PAT || undefined,
+    adoApiBase: env.REVIEW_TOOL_ADO_API_BASE || undefined,
   };
 }

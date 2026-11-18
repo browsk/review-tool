@@ -10,7 +10,12 @@ Updated at the end of each milestone. "U" = Vitest (`test/unit`), "E" = Playwrig
 | FR1 `../../etc/passwd` not served; encoded, absolute, UNC, drive, ADS, symlink, sibling-prefix | M1 | U paths (13 cases); E m1 "traversal image requests..." |
 | FR1 missing image placeholder + diagnostics warning | M1 | U pipeline; E m1 "warnings give an orange indicator..." |
 | FR1 recent documents list | M1 | (manual) `recent.json`; no automated test yet |
-| FR2 Azure DevOps loading | M5a | pending |
+| FR2 URL parsing: dev.azure.com and legacy visualstudio.com forms, encoded names, DefaultCollection, trailing slash/query/fragment; malformed and hostile URLs | M5a | U ado (22 URL cases) |
+| FR2 change filtering: only added .md (flags like "add, edit"), not edit/rename/delete/folders/other types; pagination; latest iteration's source commit | M5a | U ado (against mock fixtures); E m5a |
+| FR2 zero / one / many files: message, direct load, picker | M5a | U ado-app; E m5a (mocked API) |
+| FR2 401 / 403 / 404 (and 203 sign-in page, 500, timeout, network) give specific messages | M5a | U ado, ado-app; E m5a |
+| FR2 images fetched from the same commit, cached locally, traversal/unsafe paths refused | M5a | U ado (cache + safeRelImage); E m5a |
+| FR2 PAT from ADO_PAT or UI; never persisted (database, cache, recent list, exports) or echoed | M5a | U ado-app (scans the whole data dir); E m5a |
 | FR3 CommonMark/GFM/front matter/code highlighting | M1 | U pipeline |
 | FR3 raw HTML sanitised | M1 | U pipeline (xss fixture) |
 | FR3 resilience (node fallback, whole-parse fallback) | M1 | U pipeline ("never throws...") |

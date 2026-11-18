@@ -21,7 +21,9 @@ export function Page(props: { token: string; doc: CurrentDoc | null; navMaxLevel
       </head>
       <body>
         <header class="app-header">
-          <span class="doc-title">{props.doc?.name ?? 'Document Review'}</span>
+          <span class="doc-title" title={props.doc?.sourceLabel}>
+            {props.doc?.name ?? 'Document Review'}
+          </span>
           {hasDoc ? (
             <nav id="breadcrumb" class="breadcrumb" aria-label="Current section" aria-live="polite"></nav>
           ) : null}
@@ -173,7 +175,13 @@ function FeedbackChrome() {
   );
 }
 
-export function StartForm(props: { token: string; recent: string[]; error?: string }) {
+export function StartForm(props: {
+  token: string;
+  recent: string[];
+  error?: string;
+  patSource: 'env' | 'session' | null;
+  adoPicker?: { url: string; files: string[]; title?: string };
+}) {
   return (
     <section class="start" id="start-form">
       <form method="post" action="/load/local">
@@ -184,10 +192,50 @@ export function StartForm(props: { token: string; recent: string[]; error?: stri
         </label>
         <button type="submit">Load</button>
       </form>
+      <form method="post" action="/load/ado" id="ado-form" class="ado-form">
+        <input type="hidden" name="_token" value={props.token} />
+        <label>
+          Azure DevOps pull request URL
+          <input type="text" name="url" id="ado-url" size={60} autocomplete="off" placeholder="https://dev.azure.com/{org}/{project}/_git/{repo}/pullrequest/{id}" />
+        </label>
+        <label>
+          Personal access token
+          <input type="password" name="pat" id="ado-pat" size={30} autocomplete="off" spellcheck={false} />
+        </label>
+        <button type="submit">Load PR</button>
+        <p class="hint" id="ado-pat-hint">
+          {props.patSource === 'env'
+            ? 'Leave the token empty to use the ADO_PAT environment variable.'
+            : props.patSource === 'session'
+              ? 'A token entered earlier is being used (kept in memory only). Enter a new one to replace it.'
+              : 'Needs the Code (Read) scope. Or set ADO_PAT in the environment. The token is never stored.'}
+        </p>
+      </form>
       {props.error ? (
         <p class="error" role="alert" id="load-error">
           {props.error}
         </p>
+      ) : null}
+      {props.adoPicker ? (
+        <section class="ado-picker" id="ado-picker" aria-label="Choose a document">
+          <h2>Choose a document</h2>
+          <p>
+            {props.adoPicker.title ? `"${props.adoPicker.title}"` : 'This pull request'} adds {props.adoPicker.files.length} markdown files. Which one should be reviewed?
+          </p>
+          <ul>
+            {props.adoPicker.files.map((f) => (
+              <li>
+                <form method="post" action="/load/ado">
+                  <input type="hidden" name="_token" value={props.token} />
+                  <input type="hidden" name="url" value={props.adoPicker!.url} />
+                  <button type="submit" name="file" value={f} class="link">
+                    {f}
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
       {props.recent.length > 0 ? (
         <details class="recent">
